@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>{{ .Title }}</title>
+	</head>
+	<body
+		style="
+			max-width: 800px;
+			margin: 0 auto;
+			font-family: sans-serif;
+			color: rgb(30, 30, 30);
+		"
+	>
+		<header
+			style="
+				background-color: rgb(0, 92, 128);
+				padding: 1.5rem;
+				color: white;
+				text-align: center;
+			"
+		>
+			<div style="font-size: x-large; font-weight: bold">
+				{{ .CompanyName }}
+			</div>
+		</header>
+		<div
+			style="
+				text-align: center;
+				background-color: hsl(0, 0%, 93%);
+				padding: 2rem 4rem;
+			"
+		>
+			<h1 style="font-size: large; margin-top: 0">{{ .PrimaryMessage }}</h1>
+			<p style="font-size: larger">{{ .SecondaryMessage }}</p>
+			<a style="word-wrap: break-word" href="{{ .Link }}">{{ .Link }}</a>
+		</div>
+	</body>
+</html>

@@ -1,0 +1,17 @@
+companyName: "Golang Corporation"
+postgresSource: "postgres://postgres:secret@localhost:5432/postgres?sslmode=disable"
+redisSessionSource: "localhost:6379"
+meilisearchSource: "http://localhost:7700"
+imageDirectory: "~/dev/images"
+environment: "development"
+
+mailHost: "smtp.gmail.com"
+mailPort: 587
+mailUser: "thanish.siddique@gmail.com"
+mailPassword: "wsbiggtzxcjtxdym"
+
+googleOauthClientId: "954517856675-tlao2621j47atfevri940rjfilccb96i.apps.googleusercontent.com"
+googleOauthClientSecret: "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"
+
+tokenSigningKey: "3b157868b0bc11ecaec6a81e844658c0"
+tokenEncryptionKey: "6b4f5d6cba3c11ec83dca81e844658c0"
