@@ -26,7 +26,7 @@ var assets embed.FS
 
 func main() {
 	// Read configs.
-	config.ReadConfig()
+	config.ReadConfig(".env")
 
 	// Connect to postgresql connection pool and get client.
 	dbpool, err := pgxpool.Connect(context.Background(), config.C.PostgresSource)

@@ -51,7 +51,7 @@ type UserRepository interface {
 	OneByEmail(ctx context.Context, email string) (*User, error)
 
 	// Get many users.
-	Many(ctx context.Context, params AllUsersParams) ([]User, error)
+	Many(ctx context.Context, params ManyUsersParams) ([]User, error)
 }
 
 type User struct {
@@ -143,7 +143,7 @@ func (u User) ComparePassword(password string) error {
 	return bcrypt.CompareHashAndPassword([]byte(u.PasswordHash), []byte(password))
 }
 
-type AllUsersParams struct {
+type ManyUsersParams struct {
 	SearchPhrase null.String
 	Role         security.Role
 	ShowDeleted  bool

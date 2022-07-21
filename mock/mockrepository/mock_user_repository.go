@@ -51,7 +51,7 @@ func (mr *MockUserRepositoryMockRecorder) Delete(arg0, arg1 interface{}) *gomock
 }
 
 // Many mocks base method.
-func (m *MockUserRepository) Many(arg0 context.Context, arg1 domain.AllUsersParams) ([]domain.User, error) {
+func (m *MockUserRepository) Many(arg0 context.Context, arg1 domain.ManyUsersParams) ([]domain.User, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Many", arg0, arg1)
 	ret0, _ := ret[0].([]domain.User)

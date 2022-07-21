@@ -204,7 +204,7 @@ func (u *userService) Users(ctx context.Context, filter input.UserFilter) ([]dom
 		limit = config.DEFAULT_USERS_LIST_LIMIT
 	}
 
-	users, err := r.Many(ctx, domain.AllUsersParams{
+	users, err := r.Many(ctx, domain.ManyUsersParams{
 		SearchPhrase: filter.Search,
 		Role:         filter.Role,
 		ShowDeleted:  filter.ShowDeleted.ValueOrZero(),

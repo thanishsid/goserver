@@ -13,7 +13,7 @@ const (
 	Guest
 )
 
-var roleNames = map[Role]string{
+var RoleNames = map[Role]string{
 	Administrator: "Administrator",
 	Manager:       "Manager",
 	Editor:        "Editor",
@@ -32,5 +32,5 @@ func (r Role) ValidateRole() error {
 }
 
 func (r Role) GetName() string {
-	return roleNames[r]
+	return RoleNames[r]
 }

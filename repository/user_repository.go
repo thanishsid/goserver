@@ -82,13 +82,14 @@ func (u *userRepository) OneByEmail(ctx context.Context, email string) (*domain.
 		FullName:     userRow.FullName,
 		RoleID:       security.Role(userRow.RoleID),
 		PasswordHash: userRow.PasswordHash,
+		PictureID:    userRow.PictureID,
 		CreatedAt:    userRow.CreatedAt,
 		UpdatedAt:    userRow.UpdatedAt,
 		DeletedAt:    null.NewTime(userRow.DeletedAt.Time, userRow.DeletedAt.Valid),
 	}, nil
 }
 
-func (u *userRepository) Many(ctx context.Context, params domain.AllUsersParams) ([]domain.User, error) {
+func (u *userRepository) Many(ctx context.Context, params domain.ManyUsersParams) ([]domain.User, error) {
 	users, err := u.searchIndex.SearchUsers(ctx, search.UserSearchParams{
 		SearchPhrase: params.SearchPhrase,
 		Role:         params.Role,

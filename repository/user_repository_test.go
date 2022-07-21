@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"math/rand"
 	"testing"
 	"time"
 
@@ -9,27 +10,52 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/guregu/null.v4"
+
 	"github.com/thanishsid/goserver/domain"
 	"github.com/thanishsid/goserver/infrastructure/postgres"
+	"github.com/thanishsid/goserver/internal/search"
 	"github.com/thanishsid/goserver/internal/security"
 	"github.com/thanishsid/goserver/mock/mockpostgres"
 	"github.com/thanishsid/goserver/mock/mocksearch"
 )
 
-func TestSaveOrUpdateUser(t *testing.T) {
+func init() {
+	rand.Seed(time.Now().UnixNano())
+}
+
+func getRandRole() security.Role {
+	randIndex := rand.Intn(len(security.RoleNames))
+
+	i := 0
+	for role := range security.RoleNames {
+		if i == randIndex {
+			return role
+		}
+	}
+
+	return security.Administrator
+}
+
+func createRandomUser() *domain.User {
 	now := time.Now()
 
-	newUser := &domain.User{
+	return &domain.User{
 		ID:           uuid.New(),
 		Email:        fake.Email(),
 		Username:     fake.Username(),
 		FullName:     fake.Name(),
 		PasswordHash: fake.Password(true, true, true, true, false, 16),
-		RoleID:       security.Administrator,
+		RoleID:       getRandRole(),
 		PictureID:    uuid.NullUUID{UUID: uuid.New(), Valid: true},
 		CreatedAt:    now,
 		UpdatedAt:    now,
 	}
+}
+
+func TestSaveOrUpdateUser(t *testing.T) {
+
+	newUser := createRandomUser()
 
 	userWithoutEmail := *newUser
 	userWithoutEmail.Email = ""
@@ -95,28 +121,14 @@ func TestGetOneUserByID(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	userID := uuid.New()
-
-	now := time.Now()
-
-	user := &domain.User{
-		ID:           userID,
-		Email:        fake.Email(),
-		Username:     fake.Username(),
-		FullName:     fake.Name(),
-		PasswordHash: fake.Password(true, true, true, true, false, 16),
-		RoleID:       security.Administrator,
-		PictureID:    uuid.NullUUID{UUID: uuid.New(), Valid: true},
-		CreatedAt:    now,
-		UpdatedAt:    now,
-	}
+	user := createRandomUser()
 
 	mockQuerier := mockpostgres.NewMockQuerier(ctrl)
 
 	mockQuerier.EXPECT().
-		GetUserById(gomock.Any(), gomock.Eq(userID)).
+		GetUserById(gomock.Any(), gomock.Eq(user.ID)).
 		Return(postgres.User{
-			ID:           userID,
+			ID:           user.ID,
 			Username:     user.Username,
 			Email:        user.Email,
 			FullName:     user.FullName,
@@ -132,7 +144,78 @@ func TestGetOneUserByID(t *testing.T) {
 		db: mockQuerier,
 	}
 
-	gotUser, err := userRepo.OneByID(context.Background(), userID)
+	gotUser, err := userRepo.OneByID(context.Background(), user.ID)
 	require.NoError(t, err)
 	require.Equal(t, user, gotUser)
+}
+
+func TestGetOneUserByEmail(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	user := createRandomUser()
+
+	mockQuerier := mockpostgres.NewMockQuerier(ctrl)
+
+	mockQuerier.EXPECT().
+		GetUserByEmail(gomock.Any(), gomock.Eq(user.Email)).
+		Return(postgres.User{
+			ID:           user.ID,
+			Username:     user.Username,
+			Email:        user.Email,
+			FullName:     user.FullName,
+			RoleID:       int32(user.RoleID),
+			PasswordHash: user.PasswordHash,
+			PictureID:    user.PictureID,
+			CreatedAt:    user.CreatedAt,
+			UpdatedAt:    user.UpdatedAt,
+			DeletedAt:    user.DeletedAt,
+		}, nil)
+
+	userRepo := &userRepository{
+		db: mockQuerier,
+	}
+
+	gotUser, err := userRepo.OneByEmail(context.Background(), user.Email)
+	require.NoError(t, err)
+	require.Equal(t, user, gotUser)
+}
+
+func TestGetManyUsers(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	users := make([]domain.User, 20)
+
+	for i := range users {
+		users[i] = *createRandomUser()
+		users[i].PasswordHash = ""
+	}
+
+	manyUsersParams := domain.ManyUsersParams{
+		SearchPhrase: null.StringFrom(fake.Name()),
+		Role:         getRandRole(),
+		ShowDeleted:  true,
+		Limit:        40,
+		Offset:       20,
+	}
+
+	mockUserSearcher := mocksearch.NewMockUserSearcher(ctrl)
+
+	mockUserSearcher.EXPECT().SearchUsers(gomock.Any(), gomock.Eq(search.UserSearchParams{
+		SearchPhrase: manyUsersParams.SearchPhrase,
+		Role:         manyUsersParams.Role,
+		ShowDeleted:  manyUsersParams.ShowDeleted,
+		Limit:        manyUsersParams.Limit,
+		Offset:       manyUsersParams.Offset,
+	})).Return(users, nil)
+
+	userRepo := &userRepository{
+		searchIndex: mockUserSearcher,
+	}
+
+	gotUsers, err := userRepo.Many(context.Background(), manyUsersParams)
+	require.NoError(t, err)
+
+	require.Equal(t, gotUsers, users)
 }
