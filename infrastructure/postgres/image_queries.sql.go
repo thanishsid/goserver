@@ -86,6 +86,76 @@ func (q *Queries) GetAllImages(ctx context.Context, imageIds []uuid.UUID) ([]Get
 	return items, nil
 }
 
+const getImageById = `-- name: GetImageById :one
+SELECT id, title, file_hash, created_at, updated_at FROM images WHERE id = $1::UUID
+`
+
+func (q *Queries) GetImageById(ctx context.Context, id uuid.UUID) (Image, error) {
+	row := q.db.QueryRow(ctx, getImageById, id)
+	var i Image
+	err := row.Scan(
+		&i.ID,
+		&i.Title,
+		&i.FileHash,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getManyImages = `-- name: GetManyImages :many
+SELECT 
+    i.id, 
+    i.title, 
+    i.created_at, 
+    i.updated_at
+FROM images i
+LEFT JOIN users u ON u.picture_id = i.id
+WHERE 
+$1::BOOLEAN = FALSE OR (u.picture_id IS NULL) AND
+$2::TIMESTAMPTZ IS NULL OR i.updated_at > $2::TIMESTAMPTZ
+ORDER BY i.updated_at DESC
+LIMIT $3::BIGINT
+`
+
+type GetManyImagesParams struct {
+	ViewUnused   bool
+	UpdatedAfter null.Time
+	ImageLimit   int64
+}
+
+type GetManyImagesRow struct {
+	ID        uuid.UUID
+	Title     null.String
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
+func (q *Queries) GetManyImages(ctx context.Context, arg GetManyImagesParams) ([]GetManyImagesRow, error) {
+	rows, err := q.db.Query(ctx, getManyImages, arg.ViewUnused, arg.UpdatedAfter, arg.ImageLimit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetManyImagesRow
+	for rows.Next() {
+		var i GetManyImagesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Title,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const insertOrUpdateImage = `-- name: InsertOrUpdateImage :exec
 INSERT INTO images (
     id,
@@ -109,7 +179,7 @@ SET
 
 type InsertOrUpdateImageParams struct {
 	ID        uuid.UUID
-	Title     string
+	Title     null.String
 	FileHash  string
 	CreatedAt time.Time
 	UpdatedAt time.Time

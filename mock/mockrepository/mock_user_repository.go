@@ -11,6 +11,7 @@ import (
 	gomock "github.com/golang/mock/gomock"
 	uuid "github.com/google/uuid"
 	domain "github.com/thanishsid/goserver/domain"
+	input "github.com/thanishsid/goserver/internal/input"
 )
 
 // MockUserRepository is a mock of UserRepository interface.
@@ -51,7 +52,7 @@ func (mr *MockUserRepositoryMockRecorder) Delete(arg0, arg1 interface{}) *gomock
 }
 
 // Many mocks base method.
-func (m *MockUserRepository) Many(arg0 context.Context, arg1 domain.ManyUsersParams) ([]domain.User, error) {
+func (m *MockUserRepository) Many(arg0 context.Context, arg1 input.UserFilterBase) ([]domain.User, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Many", arg0, arg1)
 	ret0, _ := ret[0].([]domain.User)

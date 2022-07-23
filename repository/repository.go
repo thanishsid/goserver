@@ -8,7 +8,7 @@ import (
 
 	"github.com/thanishsid/goserver/domain"
 	"github.com/thanishsid/goserver/infrastructure/postgres"
-	"github.com/thanishsid/goserver/internal/search"
+	"github.com/thanishsid/goserver/infrastructure/search"
 )
 
 // Initiate and return repositories.
@@ -28,7 +28,7 @@ type Repository interface {
 }
 
 type repo struct {
-	pg       *pgxpool.Pool
+	pg       postgres.Transactioner
 	searcher *search.Searcher
 	TxRepository
 }
@@ -52,12 +52,22 @@ func (r *repo) ExecTx(ctx context.Context, txOpts pgx.TxOptions, txFunc TxFunc) 
 
 //*------------- TxRepository --------------
 
+// Get a new TxRepository (used within transactions).
+func NewTxRepository(q postgres.Querier, searcher *search.Searcher) TxRepository {
+	return &txRepo{
+		userRepository:  &userRepository{db: q, searchIndex: searcher.Users},
+		imageRepository: &imageRepository{db: q},
+	}
+}
+
 type TxRepository interface {
 	UserRepository() domain.UserRepository
+	ImageRepository() domain.ImageRepository
 }
 
 type txRepo struct {
-	userRepository domain.UserRepository
+	userRepository  domain.UserRepository
+	imageRepository domain.ImageRepository
 }
 
 // Get user repository.
@@ -65,9 +75,7 @@ func (t *txRepo) UserRepository() domain.UserRepository {
 	return t.userRepository
 }
 
-// Get a new TxRepository (used within transactions).
-func NewTxRepository(q postgres.Querier, searcher *search.Searcher) TxRepository {
-	return &txRepo{
-		userRepository: &userRepository{db: q, searchIndex: searcher.Users},
-	}
+// Get image repository.
+func (t *txRepo) ImageRepository() domain.ImageRepository {
+	return t.imageRepository
 }

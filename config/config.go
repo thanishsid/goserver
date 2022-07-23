@@ -15,6 +15,7 @@ type config struct {
 	RedisSessionSource string
 	MeilisearchSource  string
 	ImageDirectory     string
+	ImageProxyLink     string
 
 	MailHost     string
 	MailPort     int
@@ -37,6 +38,7 @@ func (c config) Validate() error {
 		vd.Field(&c.RedisSessionSource, vd.Required),
 		vd.Field(&c.MeilisearchSource, vd.Required),
 		vd.Field(&c.ImageDirectory, vd.Required),
+		vd.Field(&c.ImageProxyLink, vd.Required),
 		vd.Field(&c.MailHost, vd.Required),
 		vd.Field(&c.MailPort, vd.Required),
 		vd.Field(&c.MailUser, vd.Required),
@@ -61,6 +63,7 @@ func ReadConfig(files ...string) {
 		RedisSessionSource:      os.Getenv("SESSION_DB_SOURCE"),
 		MeilisearchSource:       os.Getenv("MEILISEARCH_SOURCE"),
 		ImageDirectory:          os.Getenv("IMAGE_DIRECTORY"),
+		ImageProxyLink:          os.Getenv("IMGPROXY_LINK"),
 		MailHost:                os.Getenv("MAIL_HOST"),
 		MailPort:                MustParseInt[int](os.Getenv("MAIL_PORT")),
 		MailUser:                os.Getenv("MAIL_USER"),

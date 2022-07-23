@@ -5,7 +5,7 @@ CREATE TABLE users (
     username TEXT NOT NULL,
     email TEXT NOT NULL UNIQUE,
     full_name TEXT NOT NULL,
-    role_id INTEGER NOT NULL,
+    user_role TEXT NOT NULL,
     password_hash TEXT NOT NULL,
     picture_id UUID REFERENCES images (id),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),

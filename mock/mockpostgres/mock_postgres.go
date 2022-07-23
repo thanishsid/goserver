@@ -124,6 +124,36 @@ func (mr *MockQuerierMockRecorder) GetAllUsers(arg0, arg1 interface{}) *gomock.C
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAllUsers", reflect.TypeOf((*MockQuerier)(nil).GetAllUsers), arg0, arg1)
 }
 
+// GetImageById mocks base method.
+func (m *MockQuerier) GetImageById(arg0 context.Context, arg1 uuid.UUID) (postgres.Image, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetImageById", arg0, arg1)
+	ret0, _ := ret[0].(postgres.Image)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetImageById indicates an expected call of GetImageById.
+func (mr *MockQuerierMockRecorder) GetImageById(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetImageById", reflect.TypeOf((*MockQuerier)(nil).GetImageById), arg0, arg1)
+}
+
+// GetManyImages mocks base method.
+func (m *MockQuerier) GetManyImages(arg0 context.Context, arg1 postgres.GetManyImagesParams) ([]postgres.GetManyImagesRow, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetManyImages", arg0, arg1)
+	ret0, _ := ret[0].([]postgres.GetManyImagesRow)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetManyImages indicates an expected call of GetManyImages.
+func (mr *MockQuerierMockRecorder) GetManyImages(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetManyImages", reflect.TypeOf((*MockQuerier)(nil).GetManyImages), arg0, arg1)
+}
+
 // GetUserByEmail mocks base method.
 func (m *MockQuerier) GetUserByEmail(arg0 context.Context, arg1 string) (postgres.User, error) {
 	m.ctrl.T.Helper()

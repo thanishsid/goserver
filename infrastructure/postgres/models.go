@@ -24,10 +24,19 @@ type User struct {
 	Username     string
 	Email        string
 	FullName     string
-	RoleID       int32
+	UserRole     string
 	PasswordHash string
 	PictureID    uuid.NullUUID
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
 	DeletedAt    null.Time
+}
+
+type Video struct {
+	ID          uuid.UUID
+	Title       null.String
+	FileHash    string
+	ThumbnailID uuid.UUID
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
 }

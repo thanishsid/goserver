@@ -124,10 +124,10 @@ func (mr *MockUserServiceMockRecorder) User(arg0, arg1 interface{}) *gomock.Call
 }
 
 // Users mocks base method.
-func (m *MockUserService) Users(arg0 context.Context, arg1 input.UserFilter) ([]domain.User, error) {
+func (m *MockUserService) Users(arg0 context.Context, arg1 input.UserFilter) (*domain.ListWithCursor[domain.User], error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Users", arg0, arg1)
-	ret0, _ := ret[0].([]domain.User)
+	ret0, _ := ret[0].(*domain.ListWithCursor[domain.User])
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

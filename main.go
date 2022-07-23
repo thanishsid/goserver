@@ -5,16 +5,17 @@ import (
 	"crypto/tls"
 	"embed"
 	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/meilisearch/meilisearch-go"
 
 	"github.com/thanishsid/goserver/config"
-	"github.com/thanishsid/goserver/infrastructure/ftsearch"
 	"github.com/thanishsid/goserver/infrastructure/postgres"
 	"github.com/thanishsid/goserver/infrastructure/rediscache"
+	"github.com/thanishsid/goserver/infrastructure/search"
 	"github.com/thanishsid/goserver/internal/mailer"
-	"github.com/thanishsid/goserver/internal/search"
 	"github.com/thanishsid/goserver/internal/sessions"
 	"github.com/thanishsid/goserver/internal/tokenizer"
 	"github.com/thanishsid/goserver/repository"
@@ -32,6 +33,14 @@ func main() {
 	dbpool, err := pgxpool.Connect(context.Background(), config.C.PostgresSource)
 	if err != nil {
 		panic(err)
+	}
+
+	// Connect to meilisearch search client.
+	searchClient := meilisearch.NewClient(meilisearch.ClientConfig{
+		Host: config.C.MeilisearchSource,
+	})
+	if !searchClient.IsHealthy() {
+		panic("meilisearch connection failed")
 	}
 
 	// Run postgresql database migrations from sql files in the embedded file system.
@@ -65,12 +74,6 @@ func main() {
 		panic(err)
 	}
 
-	// Connect to meilisearch and get client.
-	searchClient, err := ftsearch.NewSearchClient()
-	if err != nil {
-		panic(err)
-	}
-
 	// Create new search indexer.
 	searcher, err := search.NewSearcher(dbpool, searchClient)
 	if err != nil {
@@ -89,4 +92,6 @@ func main() {
 
 	fmt.Println(sessionMgr)
 	fmt.Println(service)
+
+	http.ListenAndServe(":8080", nil)
 }

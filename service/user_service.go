@@ -10,6 +10,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v4"
+	"gopkg.in/guregu/null.v4"
 
 	"github.com/thanishsid/goserver/config"
 	"github.com/thanishsid/goserver/domain"
@@ -83,7 +84,7 @@ func (u *userService) CompleteRegistration(ctx context.Context, input input.Comp
 		Email:     claims.Email,
 		Username:  claims.Username,
 		FullName:  claims.FullName,
-		RoleID:    claims.Role,
+		Role:      claims.Role,
 		PictureID: claims.PictureID,
 		CreatedAt: now,
 		UpdatedAt: now,
@@ -118,16 +119,17 @@ func (u *userService) Update(ctx context.Context, userID uuid.UUID, input input.
 			}
 		}
 
-		newUser := *targetUser
-		newUser.Username = input.Username
-		newUser.FullName = input.FullName
-		newUser.PictureID = input.PictureID
+		updatedUser := *targetUser
+		updatedUser.Username = input.Username
+		updatedUser.FullName = input.FullName
+		updatedUser.PictureID = input.PictureID
 
-		if newUser.IsEqual(targetUser) {
+		if updatedUser.IsEqual(targetUser) {
 			return ErrNoChange
 		}
 
-		return r.SaveOrUpdate(ctx, &newUser)
+		updatedUser.UpdatedAt = time.Now()
+		return r.SaveOrUpdate(ctx, &updatedUser)
 	})
 }
 
@@ -150,7 +152,7 @@ func (u *userService) ChangeRole(ctx context.Context, input input.RoleChange) er
 		}
 
 		updatedUser := *targetUser
-		updatedUser.RoleID = input.Role
+		updatedUser.Role = input.Role
 
 		if targetUser.IsEqual(&updatedUser) {
 			return ErrNoChange
@@ -195,25 +197,53 @@ func (u *userService) User(ctx context.Context, id uuid.UUID) (*domain.User, err
 }
 
 // Find users with specific filters and returns a cursor for pagination.
-func (u *userService) Users(ctx context.Context, filter input.UserFilter) ([]domain.User, error) {
+func (u *userService) Users(ctx context.Context, filter input.UserFilter) (*domain.ListWithCursor[domain.User], error) {
+	var baseFilter input.UserFilterBase
+	var err error
+
+	if filter.Cursor.Valid {
+		baseFilter, err = filter.GetFilterBaseFromCursor()
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		baseFilter = filter.UserFilterBase
+	}
+
+	if baseFilter.Limit.ValueOrZero() == 0 {
+		baseFilter.Limit = null.IntFrom(config.DEFAULT_USERS_LIST_LIMIT)
+	}
 
 	r := u.Repo.UserRepository()
 
-	limit := filter.Limit.ValueOrZero()
-	if limit == 0 {
-		limit = config.DEFAULT_USERS_LIST_LIMIT
-	}
+	// Limit incremented by 1 to find if next page exists based on
+	// whether the returned array size is equal to the speculation limit.
+	speculationLimit := baseFilter.Limit.ValueOrZero() + 1
 
-	users, err := r.Many(ctx, domain.ManyUsersParams{
-		SearchPhrase: filter.Search,
-		Role:         filter.Role,
-		ShowDeleted:  filter.ShowDeleted.ValueOrZero(),
-		Limit:        limit,
-		Offset:       limit * filter.Page.ValueOrZero(),
+	users, err := r.Many(ctx, input.UserFilterBase{
+		Query:        baseFilter.Query,
+		Role:         baseFilter.Role,
+		ShowDeleted:  baseFilter.ShowDeleted,
+		Limit:        null.IntFrom(speculationLimit),
+		UpdatedAfter: baseFilter.UpdatedAfter,
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	return users, nil
+	if len(users) < int(speculationLimit) {
+		return &domain.ListWithCursor[domain.User]{
+			Data: users,
+		}, nil
+	}
+
+	nextCursor, err := baseFilter.CreateCursor()
+	if err != nil {
+		return nil, err
+	}
+
+	return &domain.ListWithCursor[domain.User]{
+		Data:       users[:baseFilter.Limit.ValueOrZero()],
+		NextCursor: null.StringFrom(nextCursor),
+	}, nil
 }

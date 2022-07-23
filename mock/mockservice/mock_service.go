@@ -34,6 +34,20 @@ func (m *MockService) EXPECT() *MockServiceMockRecorder {
 	return m.recorder
 }
 
+// ImageService mocks base method.
+func (m *MockService) ImageService() domain.ImageService {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ImageService")
+	ret0, _ := ret[0].(domain.ImageService)
+	return ret0
+}
+
+// ImageService indicates an expected call of ImageService.
+func (mr *MockServiceMockRecorder) ImageService() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ImageService", reflect.TypeOf((*MockService)(nil).ImageService))
+}
+
 // UserService mocks base method.
 func (m *MockService) UserService() domain.UserService {
 	m.ctrl.T.Helper()

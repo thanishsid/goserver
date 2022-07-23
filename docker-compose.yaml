@@ -17,6 +17,20 @@ services:
       - development=true
     ports:
       - 7700:7700
+  imgproxy:
+    image: darthsim/imgproxy:latest
+    ports:
+      - 9000:9000
+    volumes:
+      - ~/dev/media/images:/mnt/images
+    environment:
+      - IMGPROXY_MAX_SRC_RESOLUTION=50
+      - IMGPROXY_ENABLE_WEBP_DETECTION=true
+      - IMGPROXY_ENFORCE_WEBP=true
+      - IMGPROXY_ENABLE_AVIF_DETECTION=true
+      - IMGPROXY_ENFORCE_AVIF=true
+      - IMGPROXY_LOCAL_FILESYSTEM_ROOT=/mnt/images
+      - IMGPROXY_AVIF_SPEED=8
   web:
     build:
       context: .
@@ -37,6 +51,9 @@ services:
         "--",
         "/app/wait-for.sh",
         "search:7700",
+        "--",
+        "/app/wait-for.sh",
+        "imgproxy:9000",
         "--",
         "/app/start.sh"
       ]

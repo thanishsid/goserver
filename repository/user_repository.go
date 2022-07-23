@@ -8,7 +8,8 @@ import (
 
 	"github.com/thanishsid/goserver/domain"
 	"github.com/thanishsid/goserver/infrastructure/postgres"
-	"github.com/thanishsid/goserver/internal/search"
+	"github.com/thanishsid/goserver/infrastructure/search"
+	"github.com/thanishsid/goserver/internal/input"
 	"github.com/thanishsid/goserver/internal/security"
 )
 
@@ -20,7 +21,7 @@ type userRepository struct {
 var _ domain.UserRepository = (*userRepository)(nil)
 
 func (u *userRepository) SaveOrUpdate(ctx context.Context, user *domain.User) error {
-	if err := domain.CheckValidity(user); err != nil {
+	if err := user.Validate(); err != nil {
 		return err
 	}
 
@@ -29,7 +30,7 @@ func (u *userRepository) SaveOrUpdate(ctx context.Context, user *domain.User) er
 		Username:     user.Username,
 		Email:        user.Email,
 		FullName:     user.FullName,
-		RoleID:       int32(user.RoleID),
+		UserRole:     string(user.Role),
 		PasswordHash: user.PasswordHash,
 		PictureID:    user.PictureID,
 		CreatedAt:    user.CreatedAt,
@@ -60,7 +61,7 @@ func (u *userRepository) OneByID(ctx context.Context, id uuid.UUID) (*domain.Use
 		Email:        userRow.Email,
 		Username:     userRow.Username,
 		FullName:     userRow.FullName,
-		RoleID:       security.Role(userRow.RoleID),
+		Role:         security.Role(userRow.UserRole),
 		PasswordHash: userRow.PasswordHash,
 		PictureID:    userRow.PictureID,
 		CreatedAt:    userRow.CreatedAt,
@@ -80,7 +81,7 @@ func (u *userRepository) OneByEmail(ctx context.Context, email string) (*domain.
 		Email:        userRow.Email,
 		Username:     userRow.Username,
 		FullName:     userRow.FullName,
-		RoleID:       security.Role(userRow.RoleID),
+		Role:         security.Role(userRow.UserRole),
 		PasswordHash: userRow.PasswordHash,
 		PictureID:    userRow.PictureID,
 		CreatedAt:    userRow.CreatedAt,
@@ -89,14 +90,8 @@ func (u *userRepository) OneByEmail(ctx context.Context, email string) (*domain.
 	}, nil
 }
 
-func (u *userRepository) Many(ctx context.Context, params domain.ManyUsersParams) ([]domain.User, error) {
-	users, err := u.searchIndex.SearchUsers(ctx, search.UserSearchParams{
-		SearchPhrase: params.SearchPhrase,
-		Role:         params.Role,
-		ShowDeleted:  params.ShowDeleted,
-		Limit:        params.Limit,
-		Offset:       params.Offset,
-	})
+func (u *userRepository) Many(ctx context.Context, params input.UserFilterBase) ([]domain.User, error) {
+	users, err := u.searchIndex.SearchUsers(ctx, params)
 	if err != nil {
 		return nil, err
 	}

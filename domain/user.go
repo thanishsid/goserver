@@ -6,6 +6,7 @@ import (
 	"time"
 
 	vd "github.com/go-ozzo/ozzo-validation/v4"
+	"github.com/go-ozzo/ozzo-validation/v4/is"
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/guregu/null.v4"
@@ -34,7 +35,7 @@ type UserService interface {
 	User(ctx context.Context, id uuid.UUID) (*User, error)
 
 	// Find users with specific filters.
-	Users(ctx context.Context, filter input.UserFilter) ([]User, error)
+	Users(ctx context.Context, filter input.UserFilter) (*ListWithCursor[User], error)
 }
 
 type UserRepository interface {
@@ -51,7 +52,7 @@ type UserRepository interface {
 	OneByEmail(ctx context.Context, email string) (*User, error)
 
 	// Get many users.
-	Many(ctx context.Context, params ManyUsersParams) ([]User, error)
+	Many(ctx context.Context, params input.UserFilterBase) ([]User, error)
 }
 
 type User struct {
@@ -60,28 +61,23 @@ type User struct {
 	Username     string        `json:"username"`
 	FullName     string        `json:"fullName"`
 	PasswordHash string        `json:"-"`
-	RoleID       security.Role `json:"userRole"`
+	Role         security.Role `json:"role"`
 	PictureID    uuid.NullUUID `json:"-"`
-	Picture      *Image        `json:"picture"`
 	CreatedAt    time.Time     `json:"createdAt"`
 	UpdatedAt    time.Time     `json:"updatedAt"`
 	DeletedAt    null.Time     `json:"deletedAt"`
 }
 
+// validate the user object.
 func (u User) Validate() error {
 	return vd.ValidateStruct(&u,
-		vd.Field(&u.ID, vd.By(func(_ interface{}) error {
-			if u.ID == uuid.Nil {
-				return errors.New("id cannot be blank")
-			}
-			return nil
-		})),
+		vd.Field(&u.ID, is.UUIDv4),
 		vd.Field(&u.Email, vd.Required),
 		vd.Field(&u.Username, vd.Required),
 		vd.Field(&u.FullName, vd.Required),
 		vd.Field(&u.PasswordHash, vd.Required),
-		vd.Field(&u.RoleID, vd.By(func(_ interface{}) error {
-			return u.RoleID.ValidateRole()
+		vd.Field(&u.Role, vd.By(func(_ interface{}) error {
+			return u.Role.ValidateRole()
 		})),
 		vd.Field(&u.CreatedAt, vd.By(func(_ interface{}) error {
 			if u.CreatedAt.IsZero() {
@@ -105,7 +101,7 @@ func (u User) IsEqual(c *User) bool {
 		u.Username == c.Username &&
 		u.FullName == c.FullName &&
 		u.PasswordHash == c.PasswordHash &&
-		u.RoleID == c.RoleID &&
+		u.Role == c.Role &&
 		u.PictureID == c.PictureID &&
 		u.CreatedAt.Equal(c.CreatedAt) &&
 		u.UpdatedAt.Equal(c.UpdatedAt) &&
@@ -141,12 +137,4 @@ func (u User) ComparePassword(password string) error {
 	}
 
 	return bcrypt.CompareHashAndPassword([]byte(u.PasswordHash), []byte(password))
-}
-
-type ManyUsersParams struct {
-	SearchPhrase null.String
-	Role         security.Role
-	ShowDeleted  bool
-	Limit        int64
-	Offset       int64
 }

@@ -1,6 +1,10 @@
 package input
 
 import (
+	"encoding/base64"
+	"encoding/json"
+	"errors"
+
 	vd "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/go-ozzo/ozzo-validation/v4/is"
 	"github.com/google/uuid"
@@ -50,7 +54,10 @@ type UserUpdate struct {
 }
 
 func (f UserUpdate) Validate() error {
-	return nil
+	return vd.ValidateStruct(&f,
+		vd.Field(&f.Username, vd.Required),
+		vd.Field(&f.FullName, vd.Required),
+	)
 }
 
 // User role change input.
@@ -70,17 +77,58 @@ func (f RoleChange) Validate() error {
 
 // User Filteration input.
 type UserFilter struct {
-	Search      null.String   `schema:"search"`
-	Role        security.Role `schema:"role"`
-	ShowDeleted null.Bool     `schema:"showDeleted"`
-	Limit       null.Int      `schema:"limit"`
-	Page        null.Int      `schema:"page"`
+	UserFilterBase
+	Cursor null.String `schema:"cursor"`
 }
 
-func (f UserFilter) Validate() error {
+func (f UserFilter) GetFilterBaseFromCursor() (UserFilterBase, error) {
+	var userFilter UserFilterBase
+
+	if !f.Cursor.Valid {
+		return userFilter, errors.New("unable to get filter from null cursor")
+	}
+
+	jsn := make([]byte, len(f.Cursor.String))
+
+	_, err := base64.URLEncoding.Decode(jsn, []byte(f.Cursor.String))
+	if err != nil {
+		return userFilter, err
+	}
+
+	if err := json.Unmarshal(jsn, &userFilter); err != nil {
+		return userFilter, err
+	}
+
+	return userFilter, nil
+}
+
+// User Filteration input base.
+type UserFilterBase struct {
+	Query       null.String `schema:"search" json:"query"`
+	Role        null.String `schema:"role" json:"role"`
+	ShowDeleted null.Bool   `schema:"showDeleted" json:"showDeleted"`
+	Limit       null.Int    `schema:"limit" json:"limit"`
+
+	// Non client params
+	UpdatedAfter null.Time `schema:"-" json:"updatedAfter"`
+}
+
+func (f UserFilterBase) Validate() error {
 	return vd.ValidateStruct(&f,
-		vd.Field(&f.Role, vd.When(!vd.IsEmpty(f.Role), vd.By(func(_ interface{}) error {
-			return f.Role.ValidateRole()
+		vd.Field(&f.Role, vd.When(f.Role.Valid, vd.By(func(_ interface{}) error {
+			role := security.Role(f.Role.ValueOrZero())
+			return role.ValidateRole()
 		}))),
 	)
+}
+
+func (f UserFilterBase) CreateCursor() (string, error) {
+	jsn, err := json.Marshal(f)
+	if err != nil {
+		return "", err
+	}
+
+	encString := base64.URLEncoding.EncodeToString(jsn)
+
+	return encString, nil
 }

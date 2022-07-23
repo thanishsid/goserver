@@ -8,7 +8,7 @@ mockgen -package mockmailer -destination mock/mockmailer/mock_mailer.go github.c
 
 # Search Index Mocks
 
-mockgen -package mocksearch -destination mock/mocksearch/mock_user_search.go github.com/thanishsid/goserver/internal/search UserSearcher
+mockgen -package mocksearch -destination mock/mocksearch/mock_user_search.go github.com/thanishsid/goserver/infrastructure/search UserSearcher
 
 # Repository Mocks
 

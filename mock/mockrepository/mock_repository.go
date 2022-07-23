@@ -51,6 +51,20 @@ func (mr *MockRepositoryMockRecorder) ExecTx(arg0, arg1, arg2 interface{}) *gomo
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExecTx", reflect.TypeOf((*MockRepository)(nil).ExecTx), arg0, arg1, arg2)
 }
 
+// ImageRepository mocks base method.
+func (m *MockRepository) ImageRepository() domain.ImageRepository {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ImageRepository")
+	ret0, _ := ret[0].(domain.ImageRepository)
+	return ret0
+}
+
+// ImageRepository indicates an expected call of ImageRepository.
+func (mr *MockRepositoryMockRecorder) ImageRepository() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ImageRepository", reflect.TypeOf((*MockRepository)(nil).ImageRepository))
+}
+
 // UserRepository mocks base method.
 func (m *MockRepository) UserRepository() domain.UserRepository {
 	m.ctrl.T.Helper()
@@ -86,6 +100,20 @@ func NewMockTxRepository(ctrl *gomock.Controller) *MockTxRepository {
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockTxRepository) EXPECT() *MockTxRepositoryMockRecorder {
 	return m.recorder
+}
+
+// ImageRepository mocks base method.
+func (m *MockTxRepository) ImageRepository() domain.ImageRepository {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ImageRepository")
+	ret0, _ := ret[0].(domain.ImageRepository)
+	return ret0
+}
+
+// ImageRepository indicates an expected call of ImageRepository.
+func (mr *MockTxRepositoryMockRecorder) ImageRepository() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ImageRepository", reflect.TypeOf((*MockTxRepository)(nil).ImageRepository))
 }
 
 // UserRepository mocks base method.

@@ -28,7 +28,7 @@ id,
 username, 
 email, 
 full_name,
-role_id,
+user_role,
 picture_id,
 created_at,
 updated_at,
@@ -42,7 +42,7 @@ type GetAllUsersRow struct {
 	Username  string
 	Email     string
 	FullName  string
-	RoleID    int32
+	UserRole  string
 	PictureID uuid.NullUUID
 	CreatedAt time.Time
 	UpdatedAt time.Time
@@ -63,7 +63,7 @@ func (q *Queries) GetAllUsers(ctx context.Context, userIds []uuid.UUID) ([]GetAl
 			&i.Username,
 			&i.Email,
 			&i.FullName,
-			&i.RoleID,
+			&i.UserRole,
 			&i.PictureID,
 			&i.CreatedAt,
 			&i.UpdatedAt,
@@ -85,7 +85,7 @@ id,
 username, 
 email, 
 full_name,
-role_id,
+user_role,
 password_hash,
 picture_id,
 created_at,
@@ -105,7 +105,7 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 		&i.Username,
 		&i.Email,
 		&i.FullName,
-		&i.RoleID,
+		&i.UserRole,
 		&i.PasswordHash,
 		&i.PictureID,
 		&i.CreatedAt,
@@ -121,7 +121,7 @@ id,
 username, 
 email, 
 full_name,
-role_id,
+user_role,
 password_hash,
 picture_id,
 created_at,
@@ -141,7 +141,7 @@ func (q *Queries) GetUserById(ctx context.Context, userID uuid.UUID) (User, erro
 		&i.Username,
 		&i.Email,
 		&i.FullName,
-		&i.RoleID,
+		&i.UserRole,
 		&i.PasswordHash,
 		&i.PictureID,
 		&i.CreatedAt,
@@ -166,7 +166,7 @@ INSERT INTO users (
   username, 
   email, 
   full_name, 
-  role_id,
+  user_role,
   password_hash,
   picture_id,
   created_at, 
@@ -176,7 +176,7 @@ INSERT INTO users (
   $2::TEXT,
   $3::TEXT,
   $4::TEXT,
-  $5::INTEGER,
+  $5::TEXT,
   $6::TEXT,
   $7::UUID,
   $8::TIMESTAMPTZ,
@@ -187,7 +187,7 @@ DO
 UPDATE SET 
   username = EXCLUDED.username,
   full_name = EXCLUDED.full_name,
-  role_id = EXCLUDED.role_id,
+  user_role = EXCLUDED.role_id,
   password_hash = EXCLUDED.password_hash,
   picture_id = EXCLUDED.picture_id,
   updated_at = EXCLUDED.updated_at
@@ -198,7 +198,7 @@ type InsertOrUpdateUserParams struct {
 	Username     string
 	Email        string
 	FullName     string
-	RoleID       int32
+	UserRole     string
 	PasswordHash string
 	PictureID    uuid.NullUUID
 	CreatedAt    time.Time
@@ -211,7 +211,7 @@ func (q *Queries) InsertOrUpdateUser(ctx context.Context, arg InsertOrUpdateUser
 		arg.Username,
 		arg.Email,
 		arg.FullName,
-		arg.RoleID,
+		arg.UserRole,
 		arg.PasswordHash,
 		arg.PictureID,
 		arg.CreatedAt,

@@ -7,6 +7,16 @@ CREATE TABLE images (
     created_at TIMESTAMPTZ NOT NULL,
     updated_at TIMESTAMPTZ NOT NULL
 );
+
+
+CREATE TABLE videos (
+    id UUID PRIMARY KEY,
+    title TEXT,
+    file_hash TEXT UNIQUE NOT NULL,
+    thumbnail_id UUID NOT NULL REFERENCES images (id),
+    created_at TIMESTAMPTZ NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL
+);
 -- +goose StatementEnd
 
 

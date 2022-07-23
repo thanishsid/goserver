@@ -1,1 +1,1 @@
-# goserver
+# Golang Server Clean Architecture

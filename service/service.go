@@ -9,8 +9,9 @@ import (
 
 // Inititate and get all services.
 func New(deps *ServiceDeps) Service {
-	return &srvc{
-		userService: &userService{deps},
+	return &svc{
+		userService:  &userService{deps},
+		imageService: &imageService{deps},
 	}
 }
 
@@ -22,12 +23,18 @@ type ServiceDeps struct {
 
 type Service interface {
 	UserService() domain.UserService
+	ImageService() domain.ImageService
 }
 
-type srvc struct {
-	userService domain.UserService
+type svc struct {
+	userService  domain.UserService
+	imageService domain.ImageService
 }
 
-func (s *srvc) UserService() domain.UserService {
+func (s *svc) UserService() domain.UserService {
 	return s.userService
+}
+
+func (s *svc) ImageService() domain.ImageService {
+	return s.imageService
 }

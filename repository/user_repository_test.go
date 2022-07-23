@@ -14,7 +14,7 @@ import (
 
 	"github.com/thanishsid/goserver/domain"
 	"github.com/thanishsid/goserver/infrastructure/postgres"
-	"github.com/thanishsid/goserver/internal/search"
+	"github.com/thanishsid/goserver/internal/input"
 	"github.com/thanishsid/goserver/internal/security"
 	"github.com/thanishsid/goserver/mock/mockpostgres"
 	"github.com/thanishsid/goserver/mock/mocksearch"
@@ -25,16 +25,9 @@ func init() {
 }
 
 func getRandRole() security.Role {
-	randIndex := rand.Intn(len(security.RoleNames))
+	randIndex := rand.Intn(len(security.AllRoles))
 
-	i := 0
-	for role := range security.RoleNames {
-		if i == randIndex {
-			return role
-		}
-	}
-
-	return security.Administrator
+	return security.AllRoles[randIndex]
 }
 
 func createRandomUser() *domain.User {
@@ -46,7 +39,7 @@ func createRandomUser() *domain.User {
 		Username:     fake.Username(),
 		FullName:     fake.Name(),
 		PasswordHash: fake.Password(true, true, true, true, false, 16),
-		RoleID:       getRandRole(),
+		Role:         getRandRole(),
 		PictureID:    uuid.NullUUID{UUID: uuid.New(), Valid: true},
 		CreatedAt:    now,
 		UpdatedAt:    now,
@@ -71,7 +64,7 @@ func TestSaveOrUpdateUser(t *testing.T) {
 		Email:        newUser.Email,
 		Username:     newUser.Username,
 		FullName:     newUser.FullName,
-		RoleID:       int32(newUser.RoleID),
+		UserRole:     string(newUser.Role),
 		PasswordHash: newUser.PasswordHash,
 		PictureID:    newUser.PictureID,
 		CreatedAt:    newUser.CreatedAt,
@@ -132,7 +125,7 @@ func TestGetOneUserByID(t *testing.T) {
 			Username:     user.Username,
 			Email:        user.Email,
 			FullName:     user.FullName,
-			RoleID:       int32(user.RoleID),
+			UserRole:     string(user.Role),
 			PasswordHash: user.PasswordHash,
 			PictureID:    user.PictureID,
 			CreatedAt:    user.CreatedAt,
@@ -164,7 +157,7 @@ func TestGetOneUserByEmail(t *testing.T) {
 			Username:     user.Username,
 			Email:        user.Email,
 			FullName:     user.FullName,
-			RoleID:       int32(user.RoleID),
+			UserRole:     string(user.Role),
 			PasswordHash: user.PasswordHash,
 			PictureID:    user.PictureID,
 			CreatedAt:    user.CreatedAt,
@@ -192,23 +185,16 @@ func TestGetManyUsers(t *testing.T) {
 		users[i].PasswordHash = ""
 	}
 
-	manyUsersParams := domain.ManyUsersParams{
-		SearchPhrase: null.StringFrom(fake.Name()),
-		Role:         getRandRole(),
-		ShowDeleted:  true,
-		Limit:        40,
-		Offset:       20,
+	manyUsersParams := input.UserFilterBase{
+		Query:       null.StringFrom(fake.Name()),
+		Role:        null.StringFrom(string(getRandRole())),
+		ShowDeleted: null.BoolFrom(true),
+		Limit:       null.IntFrom(40),
 	}
 
 	mockUserSearcher := mocksearch.NewMockUserSearcher(ctrl)
 
-	mockUserSearcher.EXPECT().SearchUsers(gomock.Any(), gomock.Eq(search.UserSearchParams{
-		SearchPhrase: manyUsersParams.SearchPhrase,
-		Role:         manyUsersParams.Role,
-		ShowDeleted:  manyUsersParams.ShowDeleted,
-		Limit:        manyUsersParams.Limit,
-		Offset:       manyUsersParams.Offset,
-	})).Return(users, nil)
+	mockUserSearcher.EXPECT().SearchUsers(gomock.Any(), gomock.Eq(manyUsersParams)).Return(users, nil)
 
 	userRepo := &userRepository{
 		searchIndex: mockUserSearcher,

@@ -17,6 +17,8 @@ type Querier interface {
 	DeleteImage(ctx context.Context, id uuid.UUID) error
 	GetAllImages(ctx context.Context, imageIds []uuid.UUID) ([]GetAllImagesRow, error)
 	GetAllUsers(ctx context.Context, userIds []uuid.UUID) ([]GetAllUsersRow, error)
+	GetImageById(ctx context.Context, id uuid.UUID) (Image, error)
+	GetManyImages(ctx context.Context, arg GetManyImagesParams) ([]GetManyImagesRow, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	GetUserById(ctx context.Context, userID uuid.UUID) (User, error)
 	HardDeleteUser(ctx context.Context, userID uuid.UUID) error

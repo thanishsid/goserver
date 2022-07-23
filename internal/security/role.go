@@ -1,27 +1,30 @@
 package security
 
-import "errors"
-
-type Role int32
-
-const (
-	Administrator Role = iota + 1
-	Manager
-	Editor
-	Affiliate
-	User
-	Guest
+import (
+	"errors"
 )
 
-var RoleNames = map[Role]string{
-	Administrator: "Administrator",
-	Manager:       "Manager",
-	Editor:        "Editor",
-	Affiliate:     "Affiliate",
-	User:          "User",
-	Guest:         "Guest",
+type Role string
+
+const (
+	Administrator Role = "Administrator"
+	Manager       Role = "Manager"
+	Editor        Role = "Editor"
+	Affiliate     Role = "Affiliate"
+	User          Role = "User"
+	Guest         Role = "Guest"
+)
+
+var AllRoles []Role = []Role{
+	Administrator,
+	Manager,
+	Editor,
+	Affiliate,
+	User,
+	Guest,
 }
 
+// Validate role.
 func (r Role) ValidateRole() error {
 	switch r {
 	case Administrator, Manager, Editor, Affiliate, User, Guest:
@@ -29,8 +32,4 @@ func (r Role) ValidateRole() error {
 	}
 
 	return errors.New("invalid role")
-}
-
-func (r Role) GetName() string {
-	return RoleNames[r]
 }
