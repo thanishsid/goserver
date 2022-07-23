@@ -11,7 +11,7 @@ import (
 	gomock "github.com/golang/mock/gomock"
 	uuid "github.com/google/uuid"
 	domain "github.com/thanishsid/goserver/domain"
-	input "github.com/thanishsid/goserver/internal/input"
+	input "github.com/thanishsid/goserver/input"
 )
 
 // MockUserRepository is a mock of UserRepository interface.

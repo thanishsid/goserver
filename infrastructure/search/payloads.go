@@ -5,7 +5,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/thanishsid/goserver/domain"
-	"github.com/thanishsid/goserver/internal/security"
+	"github.com/thanishsid/goserver/infrastructure/security"
 	"gopkg.in/guregu/null.v4"
 )
 

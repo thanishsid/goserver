@@ -2,8 +2,8 @@ package service
 
 import (
 	"github.com/thanishsid/goserver/domain"
-	"github.com/thanishsid/goserver/internal/mailer"
-	"github.com/thanishsid/goserver/internal/tokenizer"
+	"github.com/thanishsid/goserver/infrastructure/mailer"
+	"github.com/thanishsid/goserver/infrastructure/tokenizer"
 	"github.com/thanishsid/goserver/repository"
 )
 

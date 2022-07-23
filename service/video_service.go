@@ -6,7 +6,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/thanishsid/goserver/domain"
-	"github.com/thanishsid/goserver/internal/input"
+	"github.com/thanishsid/goserver/input"
 )
 
 type videoService struct {

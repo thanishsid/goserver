@@ -4,7 +4,7 @@ echo "generating mock files..."
 
 mockgen -package mockpostgres -destination mock/mockpostgres/mock_postgres.go github.com/thanishsid/goserver/infrastructure/postgres Querier
 
-mockgen -package mockmailer -destination mock/mockmailer/mock_mailer.go github.com/thanishsid/goserver/internal/mailer Mailer
+mockgen -package mockmailer -destination mock/mockmailer/mock_mailer.go github.com/thanishsid/goserver/infrastructure/mailer Mailer
 
 # Search Index Mocks
 

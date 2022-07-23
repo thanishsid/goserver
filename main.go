@@ -12,12 +12,12 @@ import (
 	"github.com/meilisearch/meilisearch-go"
 
 	"github.com/thanishsid/goserver/config"
+	"github.com/thanishsid/goserver/infrastructure/mailer"
 	"github.com/thanishsid/goserver/infrastructure/postgres"
 	"github.com/thanishsid/goserver/infrastructure/rediscache"
 	"github.com/thanishsid/goserver/infrastructure/search"
-	"github.com/thanishsid/goserver/internal/mailer"
-	"github.com/thanishsid/goserver/internal/sessions"
-	"github.com/thanishsid/goserver/internal/tokenizer"
+	"github.com/thanishsid/goserver/infrastructure/sessions"
+	"github.com/thanishsid/goserver/infrastructure/tokenizer"
 	"github.com/thanishsid/goserver/repository"
 	"github.com/thanishsid/goserver/service"
 )

@@ -14,9 +14,9 @@ import (
 
 	"github.com/thanishsid/goserver/config"
 	"github.com/thanishsid/goserver/domain"
-	"github.com/thanishsid/goserver/internal/input"
-	"github.com/thanishsid/goserver/internal/mailer"
-	"github.com/thanishsid/goserver/internal/tokenizer"
+	"github.com/thanishsid/goserver/infrastructure/mailer"
+	"github.com/thanishsid/goserver/infrastructure/tokenizer"
+	"github.com/thanishsid/goserver/input"
 	"github.com/thanishsid/goserver/repository"
 )
 

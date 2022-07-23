@@ -11,7 +11,7 @@ import (
 	"gopkg.in/guregu/null.v4"
 
 	"github.com/thanishsid/goserver/config"
-	"github.com/thanishsid/goserver/internal/input"
+	"github.com/thanishsid/goserver/input"
 )
 
 type ImageService interface {

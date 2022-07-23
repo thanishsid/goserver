@@ -9,7 +9,7 @@ import (
 	"github.com/google/uuid"
 	"gopkg.in/guregu/null.v4"
 
-	"github.com/thanishsid/goserver/internal/input"
+	"github.com/thanishsid/goserver/input"
 )
 
 type VideoService interface {

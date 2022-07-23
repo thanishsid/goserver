@@ -8,7 +8,7 @@ import (
 	"github.com/go-ozzo/ozzo-validation/v4/is"
 	"github.com/google/uuid"
 
-	"github.com/thanishsid/goserver/internal/security"
+	"github.com/thanishsid/goserver/infrastructure/security"
 )
 
 var ErrInvalidExpiry = errors.New("token must have a valid expiry time")

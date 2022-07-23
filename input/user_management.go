@@ -10,7 +10,7 @@ import (
 	"github.com/google/uuid"
 	"gopkg.in/guregu/null.v4"
 
-	"github.com/thanishsid/goserver/internal/security"
+	"github.com/thanishsid/goserver/infrastructure/security"
 )
 
 // Registration initialization input.

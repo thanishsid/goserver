@@ -8,7 +8,7 @@ import (
 	"github.com/meilisearch/meilisearch-go"
 
 	"github.com/thanishsid/goserver/infrastructure/postgres"
-	"github.com/thanishsid/goserver/internal/security"
+	"github.com/thanishsid/goserver/infrastructure/security"
 )
 
 const (

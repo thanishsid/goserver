@@ -11,8 +11,8 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/guregu/null.v4"
 
-	"github.com/thanishsid/goserver/internal/input"
-	"github.com/thanishsid/goserver/internal/security"
+	"github.com/thanishsid/goserver/infrastructure/security"
+	"github.com/thanishsid/goserver/input"
 )
 
 type UserService interface {

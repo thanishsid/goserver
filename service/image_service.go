@@ -13,7 +13,7 @@ import (
 
 	"github.com/thanishsid/goserver/config"
 	"github.com/thanishsid/goserver/domain"
-	"github.com/thanishsid/goserver/internal/input"
+	"github.com/thanishsid/goserver/input"
 )
 
 type imageService struct {

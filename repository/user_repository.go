@@ -9,8 +9,8 @@ import (
 	"github.com/thanishsid/goserver/domain"
 	"github.com/thanishsid/goserver/infrastructure/postgres"
 	"github.com/thanishsid/goserver/infrastructure/search"
-	"github.com/thanishsid/goserver/internal/input"
-	"github.com/thanishsid/goserver/internal/security"
+	"github.com/thanishsid/goserver/infrastructure/security"
+	"github.com/thanishsid/goserver/input"
 )
 
 type userRepository struct {

@@ -14,8 +14,8 @@ import (
 
 	"github.com/thanishsid/goserver/domain"
 	"github.com/thanishsid/goserver/infrastructure/postgres"
-	"github.com/thanishsid/goserver/internal/input"
-	"github.com/thanishsid/goserver/internal/security"
+	"github.com/thanishsid/goserver/infrastructure/security"
+	"github.com/thanishsid/goserver/input"
 	"github.com/thanishsid/goserver/mock/mockpostgres"
 	"github.com/thanishsid/goserver/mock/mocksearch"
 )

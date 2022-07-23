@@ -9,7 +9,7 @@ import (
 	"github.com/meilisearch/meilisearch-go"
 
 	"github.com/thanishsid/goserver/domain"
-	"github.com/thanishsid/goserver/internal/input"
+	"github.com/thanishsid/goserver/input"
 )
 
 type UserSearcher interface {
