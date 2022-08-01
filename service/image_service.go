@@ -4,39 +4,54 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v4"
-	"gopkg.in/guregu/null.v4"
 
 	"github.com/thanishsid/goserver/config"
 	"github.com/thanishsid/goserver/domain"
-	"github.com/thanishsid/goserver/input"
+	"github.com/thanishsid/goserver/infrastructure/db"
 )
 
+func NewImageService(dbs db.DB) domain.ImageService {
+	return &imageService{
+		DB: dbs,
+	}
+}
+
 type imageService struct {
-	*ServiceDeps
+	DB db.DB
 }
 
 var _ domain.ImageService = (*imageService)(nil)
 
 // Reads the image data from a reader and saves it and then returns image object
-func (i *imageService) Save(ctx context.Context, input input.ImageUpload) (*domain.Image, error) {
+func (i *imageService) Save(ctx context.Context, input domain.ImageUploadInput) (image *domain.Image, err error) {
 
-	if err := input.Validate(); err != nil {
+	// create a random uuid to use as image filename and the id for database entry.
+	imageID := uuid.New()
+
+	if err = input.Validate(); err != nil {
 		return nil, err
 	}
 
-	// Generate a hash for the image.
-	imageHash, err := generateFileHash(input.File)
+	// Read the image bytes from multipart form.
+	imgBytes, err := ioutil.ReadAll(input.File)
+	if err != nil {
+		return nil, err
+	}
+
+	// generate hash from bytes read.
+	imageHash, err := generateFileHash(imgBytes)
 	if err != nil {
 		return nil, err
 	}
 
 	// Check if an image with the same hash exists in the database.
-	imageExists, err := i.Repo.ImageRepository().CheckHashExists(ctx, imageHash)
+	imageExists, err := i.DB.CheckImageHashExists(ctx, imageHash)
 	if err != nil {
 		return nil, err
 	}
@@ -45,7 +60,10 @@ func (i *imageService) Save(ctx context.Context, input input.ImageUpload) (*doma
 		return nil, fmt.Errorf("duplicate image, %w", ErrFileAlreadyExists)
 	}
 
-	imageID := uuid.New()
+	// Create the image directory if it does not exist.
+	if err := os.MkdirAll(config.C.ImageDirectory, 0777); err != nil {
+		return nil, err
+	}
 
 	// Create a new file to store the image.
 	dst, err := os.Create(getImagePath(imageID))
@@ -55,23 +73,30 @@ func (i *imageService) Save(ctx context.Context, input input.ImageUpload) (*doma
 	}
 
 	// write image data to the file.
-	_, err = io.Copy(dst, input.File)
+	_, err = dst.Write(imgBytes)
 	if err != nil {
 		return nil, err
 	}
 
 	now := time.Now()
+
 	newImage := &domain.Image{
 		ID:        imageID,
 		Title:     input.Title,
+		Link:      config.C.ImageProxyLink,
 		FileHash:  imageHash,
 		CreatedAt: now,
 		UpdatedAt: now,
 	}
-	newImage.LoadImageProxyLink()
 
-	// Save new image info to the database.
-	if err := i.Repo.ImageRepository().SaveOrUpdate(ctx, newImage); err != nil {
+	// Save image info to database.
+	if err := i.DB.InsertOrUpdateImage(ctx, db.InsertOrUpdateImageParams{
+		ID:        newImage.ID,
+		Title:     newImage.Title,
+		FileHash:  newImage.FileHash,
+		CreatedAt: newImage.CreatedAt,
+		UpdatedAt: newImage.UpdatedAt,
+	}); err != nil {
 		return nil, err
 	}
 
@@ -79,15 +104,13 @@ func (i *imageService) Save(ctx context.Context, input input.ImageUpload) (*doma
 }
 
 // Update the image
-func (i *imageService) Update(ctx context.Context, input input.ImageUpdate) error {
+func (i *imageService) Update(ctx context.Context, input domain.ImageUpdateInput) error {
 	if err := input.Validate(); err != nil {
 		return err
 	}
 
-	r := i.Repo.ImageRepository()
-
 	// Get existing image info from the database.
-	existingImage, err := r.OneByID(ctx, input.ID)
+	dbImage, err := i.DB.GetImageById(ctx, input.ID)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return ErrNotFound
@@ -96,50 +119,70 @@ func (i *imageService) Update(ctx context.Context, input input.ImageUpdate) erro
 		return err
 	}
 
-	// Generate hash the provided image.
-	imageHash, err := generateFileHash(input.File)
+	// Read the image bytes from multipart form.
+	imgBytes, err := io.ReadAll(input.File)
 	if err != nil {
 		return err
 	}
 
-	updatedImage := *existingImage
-	updatedImage.FileHash = imageHash
-	updatedImage.Title = input.Title
+	// Generate hash for the provided image.
+	imageHash, err := generateFileHash(imgBytes)
+	if err != nil {
+		return err
+	}
 
-	if updatedImage.IsEqual(existingImage) {
+	hashChanged := string(dbImage.FileHash) != string(imageHash)
+
+	if hashChanged {
+		// Open the existing image file from disk.
+		existingFile, err := os.OpenFile(getImagePath(input.ID), os.O_RDWR, 0666)
+		defer existingFile.Close()
+		if err != nil {
+			return err
+		}
+
+		// Truncate the image file size to 0.
+		if err := existingFile.Truncate(0); err != nil {
+			return err
+		}
+
+		// Reset the io offset to the start of the file.
+		_, err = existingFile.Seek(0, 0)
+		if err != nil {
+			return err
+		}
+
+		// Write new image file data to the existing file.
+		if _, err := existingFile.Write(imgBytes); err != nil {
+			return err
+		}
+	}
+
+	updateParams := db.InsertOrUpdateImageParams{
+		ID:        dbImage.ID,
+		Title:     dbImage.Title,
+		FileHash:  dbImage.FileHash,
+		CreatedAt: dbImage.CreatedAt,
+		UpdatedAt: dbImage.UpdatedAt,
+	}
+
+	titleChanged := dbImage.Title != input.Title
+
+	if titleChanged {
+		updateParams.Title = input.Title
+	}
+
+	if hashChanged {
+		updateParams.FileHash = imageHash
+	}
+
+	if !titleChanged || !hashChanged {
 		return ErrNoChange
 	}
 
-	// Open the existing image file from disk.
-	existingFile, err := os.OpenFile(getImagePath(input.ID), os.O_RDWR, 0666)
-	defer existingFile.Close()
-	if err != nil {
-		return err
-	}
+	updateParams.UpdatedAt = time.Now()
 
-	// Truncate the image file size to 0.
-	if err := existingFile.Truncate(0); err != nil {
-		return err
-	}
-
-	// Reset the io offset to the start of the file.
-	_, err = existingFile.Seek(0, 0)
-	if err != nil {
-		return err
-	}
-
-	// Write new image file data to the existing file.
-	if _, err := io.Copy(existingFile, input.File); err != nil {
-		return err
-	}
-
-	// Save the updated image info to the database.
-	updatedImage.UpdatedAt = time.Now()
-	if err := r.SaveOrUpdate(ctx, &updatedImage); err != nil {
-		return err
-	}
-
-	return nil
+	return i.DB.InsertOrUpdateImage(ctx, updateParams)
 }
 
 // Delete an image
@@ -148,56 +191,44 @@ func (i *imageService) Delete(ctx context.Context, id uuid.UUID) error {
 		return err
 	}
 
-	return i.Repo.ImageRepository().Delete(ctx, id)
+	return i.DB.DeleteImage(ctx, id)
 }
 
-// Get images.
-func (i *imageService) Images(ctx context.Context, filter input.MediaFilter) (*domain.ListWithCursor[domain.Image], error) {
-
-	var baseFilter input.MediaFilterBase
-	var err error
-
-	if filter.Cursor.Valid {
-		baseFilter, err = filter.GetFilterFromCursor()
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		baseFilter = filter.MediaFilterBase
-	}
-
-	if baseFilter.Limit.ValueOrZero() == 0 {
-		baseFilter.Limit = null.IntFrom(config.DEFAULT_IMAGES_LIST_LIMIT)
-	}
-
-	r := i.Repo.ImageRepository()
-
-	// Limit incremented by 1 to find if next page exists based on
-	// whether the returned array size is equal to the speculation limit.
-	speculationLimit := baseFilter.Limit.ValueOrZero() + 1
-
-	images, err := r.Many(ctx, input.MediaFilterBase{
-		ViewUnused:   baseFilter.ViewUnused,
-		UpdatedAfter: baseFilter.UpdatedAfter,
-		Limit:        null.IntFrom(speculationLimit),
-	})
+// Get an image.
+func (i *imageService) One(ctx context.Context, id uuid.UUID) (*domain.Image, error) {
+	dbImage, err := i.DB.GetImageById(ctx, id)
 	if err != nil {
 		return nil, err
 	}
 
-	if len(images) < int(speculationLimit) {
-		return &domain.ListWithCursor[domain.Image]{
-			Data: images,
-		}, nil
-	}
-
-	nextCursor, err := baseFilter.CreateCursor()
-	if err != nil {
-		return nil, err
-	}
-
-	return &domain.ListWithCursor[domain.Image]{
-		Data:       images[:baseFilter.Limit.ValueOrZero()],
-		NextCursor: null.StringFrom(nextCursor),
+	return &domain.Image{
+		ID:        dbImage.ID,
+		Title:     dbImage.Title,
+		Link:      config.C.ImageProxyLink,
+		FileHash:  dbImage.FileHash,
+		CreatedAt: dbImage.CreatedAt,
+		UpdatedAt: dbImage.UpdatedAt,
 	}, nil
+}
+
+// Get all images in a set of ids.
+func (i *imageService) AllByIDS(ctx context.Context, ids ...uuid.UUID) ([]*domain.Image, error) {
+	imageRows, err := i.DB.GetAllImagesInIDS(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+
+	images := make([]*domain.Image, len(imageRows))
+
+	for i, row := range imageRows {
+		images[i] = &domain.Image{
+			ID:        row.ID,
+			Title:     row.Title,
+			Link:      config.C.ImageProxyLink,
+			CreatedAt: row.CreatedAt,
+			UpdatedAt: row.UpdatedAt,
+		}
+	}
+
+	return images, nil
 }

@@ -6,26 +6,21 @@ import (
 
 	vd "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/go-ozzo/ozzo-validation/v4/is"
-	"github.com/google/uuid"
-
-	"github.com/thanishsid/goserver/infrastructure/security"
+	"github.com/thanishsid/goserver/domain"
 )
 
 var ErrInvalidExpiry = errors.New("token must have a valid expiry time")
 var ErrTokenExpired = errors.New("this token has expired")
 
 type RegistrationClaims struct {
-	Username  string        `json:"uname"`
-	Email     string        `json:"email"`
-	FullName  string        `json:"fname"`
-	Role      security.Role `json:"role"`
-	PictureID uuid.NullUUID `json:"pictureId"`
-	Expiry    time.Time     `json:"exp"`
+	Email    string      `json:"email"`
+	FullName string      `json:"fname"`
+	Role     domain.Role `json:"role"`
+	Expiry   time.Time   `json:"exp"`
 }
 
 func (c RegistrationClaims) Validate() error {
 	return vd.ValidateStruct(&c,
-		vd.Field(&c.Username, vd.Required),
 		vd.Field(&c.Email, vd.Required, is.Email),
 		vd.Field(&c.FullName, vd.Required),
 		vd.Field(&c.Role, vd.By(func(value interface{}) error {

@@ -1,0 +1,14 @@
+type PageInfo {
+	startCursor: ID!
+	endCursor: ID!
+	hasNextPage: Boolean!
+}
+
+type Role {
+	id: ID!
+	name: String!
+}
+
+type Message {
+	message: String!
+}

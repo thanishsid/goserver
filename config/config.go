@@ -13,7 +13,6 @@ type config struct {
 	CompanyName        string
 	PostgresSource     string
 	RedisSessionSource string
-	MeilisearchSource  string
 	ImageDirectory     string
 	ImageProxyLink     string
 
@@ -28,6 +27,8 @@ type config struct {
 	TokenSigningKey    string
 	TokenEncryptionKey string
 
+	ServerPort string
+
 	Environment string
 }
 
@@ -36,7 +37,6 @@ func (c config) Validate() error {
 		vd.Field(&c.CompanyName, vd.Required),
 		vd.Field(&c.PostgresSource, vd.Required),
 		vd.Field(&c.RedisSessionSource, vd.Required),
-		vd.Field(&c.MeilisearchSource, vd.Required),
 		vd.Field(&c.ImageDirectory, vd.Required),
 		vd.Field(&c.ImageProxyLink, vd.Required),
 		vd.Field(&c.MailHost, vd.Required),
@@ -47,6 +47,8 @@ func (c config) Validate() error {
 		vd.Field(&c.GoogleOauthClientSecret, vd.Required),
 		vd.Field(&c.TokenSigningKey, vd.Required),
 		vd.Field(&c.TokenEncryptionKey, vd.Required),
+		vd.Field(&c.ServerPort, vd.Required),
+		vd.Field(&c.Environment, vd.Required),
 	)
 }
 
@@ -61,7 +63,6 @@ func ReadConfig(files ...string) {
 		CompanyName:             "Golang Corp",
 		PostgresSource:          os.Getenv("POSTGRES_SOURCE"),
 		RedisSessionSource:      os.Getenv("SESSION_DB_SOURCE"),
-		MeilisearchSource:       os.Getenv("MEILISEARCH_SOURCE"),
 		ImageDirectory:          os.Getenv("IMAGE_DIRECTORY"),
 		ImageProxyLink:          os.Getenv("IMGPROXY_LINK"),
 		MailHost:                os.Getenv("MAIL_HOST"),
@@ -72,6 +73,7 @@ func ReadConfig(files ...string) {
 		GoogleOauthClientSecret: os.Getenv("GOOGLE_OAUTH_CLIENT_SECRET"),
 		TokenSigningKey:         os.Getenv("TOKEN_SIGNING_KEY"),
 		TokenEncryptionKey:      os.Getenv("TOKEN_ENCRYPTION_KEY"),
+		ServerPort:              os.Getenv("SERVER_PORT"),
 		Environment:             os.Getenv("ENVIRONMENT"),
 	}
 

@@ -1,4 +1,4 @@
-.PHONY: dockup dockdown redock prune gensql genmock dev tidy test clean
+.PHONY: dockup dockdown redock prune gensql genmock gengql dev tidy test clean
 
 dockup: 
 	docker-compose up -d
@@ -17,6 +17,9 @@ gensql:
 
 genmock:
 	./scripts/genmocks.sh
+
+gengql:
+	gqlgen generate
 
 dev:
 	./scripts/dev.sh

@@ -1,0 +1,25 @@
+type Session @goModel(model: "github.com/thanishsid/goserver/domain.Session") {
+	id: ID!
+	userAgent: String!
+	createdAt: Time!
+	accessedAt: Time!
+}
+
+extend type Mutations {
+	Login(email: String!, password: String!): Message!
+		@enforceAction(action: "login")
+
+	Logout: Message! @enforceAction(action: "logout")
+
+	LogoutFromAllDevices: Message!
+		@enforceAction(action: "logout_from_all_devices")
+}
+
+extend type Queries {
+	GetCurrentSession: Session! @enforceAction(action: "get_current_session")
+
+	GetMySessions: [Session!]! @enforceAction(action: "get_my_sessions")
+
+	GetSessionsByUser(id: ID!): [Session!]!
+		@enforceAction(action: "get_sessions_by_user")
+}

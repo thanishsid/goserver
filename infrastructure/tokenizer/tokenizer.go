@@ -112,11 +112,11 @@ func (tc *tokenizer) GetClaims(ctx context.Context, secureToken string, claims V
 		return err
 	}
 
-	if err := claims.Validate(); err != nil {
+	if err := nested.Claims(tc.SigningKey, claims); err != nil {
 		return err
 	}
 
-	return nested.Claims(tc.SigningKey, &claims)
+	return claims.Validate()
 }
 
 // Takes the encrypted token and a pointer to the claims, the token is deserialized into the provided claims pointer without verification.

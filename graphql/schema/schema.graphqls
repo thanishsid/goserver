@@ -1,0 +1,16 @@
+# Main Schema
+schema {
+	query: Queries
+	mutation: Mutations
+}
+
+type Queries {
+	me: User @enforceAction(action: "view_me")
+
+	roles: [Role!]! @enforceAction(action: "view_roles")
+}
+
+type Mutations {
+	UploadImage(file: Upload!, title: String): Image!
+		@enforceAction(action: "upload_image")
+}

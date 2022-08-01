@@ -1,0 +1,84 @@
+type User @goModel(model: "github.com/thanishsid/goserver/domain.User") {
+	id: ID!
+	username: String!
+	email: String!
+	fullName: String!
+	role: String!
+	picture: Image @goField(forceResolver: true)
+	createdAt: Time!
+	updatedAt: Time!
+	deletedAt: Time
+}
+
+type UserEdge {
+	cursor: String!
+	node: User!
+}
+
+type UserCollection {
+	nodes: [User!]!
+	edges: [UserEdge!]!
+	pageInfo: PageInfo!
+}
+
+# Input types
+input StartRegistrationInput {
+	fullName: String!
+	email: String!
+	callbackUrl: String!
+}
+
+input StartUserCreationInput {
+	fullName: String!
+	email: String!
+	role: String!
+	callbackUrl: String!
+}
+
+input CompleteRegistrationInput {
+	token: String!
+	username: String!
+	password: String!
+	pictureId: ID
+}
+
+input UpdateProfileInput {
+	username: String!
+	fullName: String!
+	pictureId: ID
+}
+
+# User Mutations
+extend type Mutations {
+	StartAccountRegistration(input: StartRegistrationInput!): Message!
+		@enforceAction(action: "register_account")
+
+	StartAccountCreation(input: StartUserCreationInput!): Message!
+		@enforceAction(action: "create_account")
+
+	CompleteRegistration(input: CompleteRegistrationInput!): Message!
+		@enforceAction(action: "register_account")
+
+	UpdateProfile(input: UpdateProfileInput!): Message!
+		@enforceAction(action: "update_account")
+
+	DeleteOwnAccount: Message! @enforceAction(action: "delete_own_account")
+
+	DeleteAnotherAccount(id: ID!): Message!
+		@enforceAction(action: "delete_another_account")
+
+	RecoverAccount(id: ID!): Message! @enforceAction(action: "recover_account")
+}
+
+# User Queries
+extend type Queries {
+	user(id: ID!): User! @enforceAction(action: "view_user")
+
+	users(
+		query: String
+		role: String
+		showDeleted: Boolean
+		limit: Int
+		cursor: String
+	): UserCollection! @enforceAction(action: "view_users")
+}

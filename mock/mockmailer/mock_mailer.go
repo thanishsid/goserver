@@ -36,7 +36,7 @@ func (m *MockMailer) EXPECT() *MockMailerMockRecorder {
 }
 
 // SendLinkMail mocks base method.
-func (m *MockMailer) SendLinkMail(arg0 context.Context, arg1 mailer.LinkMailTemplateData) error {
+func (m *MockMailer) SendLinkMail(arg0 context.Context, arg1 mailer.LinkMailData) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SendLinkMail", arg0, arg1)
 	ret0, _ := ret[0].(error)

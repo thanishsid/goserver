@@ -11,12 +11,6 @@ services:
     image: redis:7.0.3-alpine3.16
     ports:
       - 6789:6789
-  search:
-    image: getmeili/meilisearch:latest
-    environment:
-      - development=true
-    ports:
-      - 7700:7700
   imgproxy:
     image: darthsim/imgproxy:latest
     ports:
@@ -48,9 +42,6 @@ services:
         "--",
         "/app/wait-for.sh",
         "session:6379",
-        "--",
-        "/app/wait-for.sh",
-        "search:7700",
         "--",
         "/app/wait-for.sh",
         "imgproxy:9000",

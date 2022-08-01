@@ -12,7 +12,7 @@ import (
 )
 
 type Mailer interface {
-	SendLinkMail(ctx context.Context, data LinkMailTemplateData) error
+	SendLinkMail(ctx context.Context, data LinkMailData) error
 }
 
 type MailerConfig struct {

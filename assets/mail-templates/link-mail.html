@@ -4,7 +4,7 @@
 		<meta charset="UTF-8" />
 		<meta http-equiv="X-UA-Compatible" content="IE=edge" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<title>{{ .Title }}</title>
+		<title>{{ .Data.Title }}</title>
 	</head>
 	<body
 		style="
@@ -33,9 +33,13 @@
 				padding: 2rem 4rem;
 			"
 		>
-			<h1 style="font-size: large; margin-top: 0">{{ .PrimaryMessage }}</h1>
-			<p style="font-size: larger">{{ .SecondaryMessage }}</p>
-			<a style="word-wrap: break-word" href="{{ .Link }}">{{ .Link }}</a>
+			<h1 style="font-size: large; margin-top: 0">
+				{{ .Data.PrimaryMessage }}
+			</h1>
+			<p style="font-size: larger">{{ .Data.SecondaryMessage }}</p>
+			<a style="word-wrap: break-word" href="{{ .Data.Link }}"
+				>{{ .Data.Link }}</a
+			>
 		</div>
 	</body>
 </html>

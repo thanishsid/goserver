@@ -2,20 +2,22 @@ package mailer
 
 import "github.com/thanishsid/goserver/config"
 
-type LinkMailTemplateData struct {
+type LinkMailData struct {
+	To               string
+	Subject          string
 	Title            string
 	PrimaryMessage   string
 	SecondaryMessage string
 	Link             string
 }
 
-type TemplateData[T any] struct {
+type DefaultData[T any] struct {
 	CompanyName string
 	Data        T
 }
 
-func NewDataWithDefault[T any](data T) TemplateData[T] {
-	return TemplateData[T]{
+func NewDataWithDefaults[T any](data T) DefaultData[T] {
+	return DefaultData[T]{
 		CompanyName: config.C.CompanyName,
 		Data:        data,
 	}

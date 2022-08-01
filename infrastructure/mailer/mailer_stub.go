@@ -14,37 +14,39 @@ type mailer struct {
 }
 
 type mailData struct {
-	TemplateName string
-	TemplateData any
-	To           []string
-	Subject      string
+	templateName string
+	templateData any
+	to           []string
+	subject      string
 }
 
 // Send email with data and specific template.
-func (m *mailer) sendMail(ctx context.Context, data mailData) error {
+func sendMail(ctx context.Context, m *mailer, data mailData) error {
 	templateBuffer := new(bytes.Buffer)
 
 	if err := m.Templates.ExecuteTemplate(
 		templateBuffer,
-		data.TemplateName,
-		data.TemplateData); err != nil {
+		data.templateName,
+		data.templateData); err != nil {
 		return err
 	}
 
 	msg := gomail.NewMessage()
 
 	msg.SetHeader("From", m.Dialer.Username)
-	msg.SetHeader("To", data.To...)
-	msg.SetHeader("Subject", data.Subject)
+	msg.SetHeader("To", data.to...)
+	msg.SetHeader("Subject", data.subject)
 	msg.SetBody("text/html", templateBuffer.String())
 
 	return m.Dialer.DialAndSend(msg)
 }
 
 // Send Link Mail.
-func (m *mailer) SendLinkMail(ctx context.Context, data LinkMailTemplateData) error {
-	return m.sendMail(ctx, mailData{
-		TemplateName: "link-mail.html",
-		TemplateData: NewDataWithDefault(data),
+func (m *mailer) SendLinkMail(ctx context.Context, data LinkMailData) error {
+	return sendMail(ctx, m, mailData{
+		templateName: "link-mail.html",
+		to:           []string{data.To},
+		subject:      data.Subject,
+		templateData: NewDataWithDefaults(data),
 	})
 }
