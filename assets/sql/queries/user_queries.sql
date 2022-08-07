@@ -15,7 +15,7 @@ INSERT INTO users (
   @email::TEXT,
   @full_name::TEXT,
   @role::TEXT,
-  @password_hash::TEXT,
+  sqlc.narg('password_hash')::TEXT,
   sqlc.narg('picture_id')::UUID,
   @created_at::TIMESTAMPTZ,
   @updated_at::TIMESTAMPTZ
@@ -124,3 +124,9 @@ updated_at,
 deleted_at
 FROM users
 WHERE sqlc.narg('user_ids')::UUID[] IS NULL OR id = ANY(sqlc.narg('user_ids')::UUID[]);
+
+
+-- name: GetAdminCount :one
+SELECT COUNT(1) FROM users WHERE id = @id::UUID;
+
+

@@ -7,35 +7,36 @@ import (
 
 	"github.com/go-redis/cache/v8"
 	"github.com/google/uuid"
+
 	"github.com/thanishsid/goserver/config"
 	"github.com/thanishsid/goserver/domain"
 	"github.com/thanishsid/goserver/infrastructure/rediscache"
 )
 
-func NewSessionService(cacheStore *rediscache.CacheStore) domain.SessionService {
-	return &sessionService{cacheStore}
-}
-
-type sessionService struct {
+type Session struct {
 	*rediscache.CacheStore
 }
 
-var _ domain.SessionService = (*sessionService)(nil)
+var _ domain.SessionService = (*Session)(nil)
 
 // Create a new seesion and returns a session id.
-func (s *sessionService) Create(ctx context.Context, userID uuid.UUID, userAgent string, data map[string]any) (domain.SID, error) {
+func (s *Session) Create(ctx context.Context, input domain.CreateSessionInput) (*domain.Session, error) {
+	if err := input.Validate(); err != nil {
+		return nil, nil
+	}
 
-	sid := domain.NewSID(userID)
+	sid := domain.NewSID(input.UserID)
 
 	now := time.Now()
 
 	session := &domain.Session{
 		ID:         sid,
-		UserID:     userID,
-		UserAgent:  userAgent,
+		UserID:     input.UserID,
+		UserRole:   input.UserRole,
+		UserAgent:  input.UserAgent,
 		CreatedAt:  now,
 		AccessedAt: now,
-		Data:       data,
+		Data:       input.Data,
 	}
 
 	cacheItem := &cache.Item{
@@ -46,23 +47,24 @@ func (s *sessionService) Create(ctx context.Context, userID uuid.UUID, userAgent
 	}
 
 	if err := s.Cache.Set(cacheItem); err != nil {
-		return "", nil
+		return nil, err
 	}
 
-	return sid, nil
+	return session, nil
 }
 
 // Delete a session by id.
-func (s *sessionService) Delete(ctx context.Context, id domain.SID) error {
+func (s *Session) Delete(ctx context.Context, id domain.SID) error {
 	return s.Cache.Delete(ctx, id.String())
 }
 
 // Delete all sessions by UserID.
-func (s *sessionService) DeleteAllByUserID(ctx context.Context, userID uuid.UUID) error {
+func (s *Session) DeleteAllByUserID(ctx context.Context, userID uuid.UUID) error {
+	var keys []string
 
-	keys, err := s.Client.Keys(ctx, userID.String()+"*").Result()
-	if err != nil {
-		return err
+	iter := s.Client.Scan(ctx, 0, userID.String()+"*", 0).Iterator()
+	for iter.Next(ctx) {
+		keys = append(keys, iter.Val())
 	}
 
 	for _, key := range keys {
@@ -74,11 +76,35 @@ func (s *sessionService) DeleteAllByUserID(ctx context.Context, userID uuid.UUID
 	return nil
 }
 
+// Update the role of in all sessions with the given userID.
+func (s *Session) UpdateRoleByUserID(ctx context.Context, userID uuid.UUID, role domain.Role) error {
+	sessions, err := s.GetAllByUserID(ctx, userID)
+	if err != nil {
+		return err
+	}
+
+	for _, session := range sessions {
+
+		session.UserRole = role
+
+		if err := s.Cache.Set(&cache.Item{
+			Ctx:   ctx,
+			Key:   session.ID.String(),
+			Value: session,
+			TTL:   time.Since(session.CreatedAt.Add(config.SESSION_TTL)),
+		}); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 // Get a session, takes in a session id and a fresh useragent string from client
 // if the useragent has changed from existing value it will be updated.
 // Everytime the get function is called on a valid session the AcessedAt property on
 // a session will be updated.
-func (s *sessionService) Get(ctx context.Context, id domain.SID, userAgent string) (*domain.Session, error) {
+func (s *Session) Get(ctx context.Context, id domain.SID, userAgent string) (*domain.Session, error) {
 
 	session := new(domain.Session)
 
@@ -97,7 +123,7 @@ func (s *sessionService) Get(ctx context.Context, id domain.SID, userAgent strin
 			Ctx:   ctx,
 			Key:   id.String(),
 			Value: session,
-			TTL:   session.CreatedAt.Add(config.SESSION_TTL).Sub(time.Now()),
+			TTL:   time.Until(session.CreatedAt.Add(config.SESSION_TTL)),
 		}); err != nil {
 			return nil, fmt.Errorf("SessionService.Get: failed to set updated useragent: %w", err)
 		}
@@ -107,28 +133,29 @@ func (s *sessionService) Get(ctx context.Context, id domain.SID, userAgent strin
 }
 
 // Get all sessions by userID sorted by accessedAt time.
-func (s *sessionService) GetAllByUserID(ctx context.Context, userID uuid.UUID) ([]*domain.Session, error) {
+func (s *Session) GetAllByUserID(ctx context.Context, userID uuid.UUID) ([]*domain.Session, error) {
+	var keys []string
 
-	keys, err := s.Client.Keys(ctx, userID.String()+"*").Result()
-	if err != nil {
-		return nil, err
+	iter := s.Client.Scan(ctx, 0, userID.String()+"*", 0).Iterator()
+	for iter.Next(ctx) {
+		keys = append(keys, iter.Val())
 	}
 
 	sessions := make([]*domain.Session, len(keys))
 
-	for _, key := range keys {
+	for i, key := range keys {
 		session := new(domain.Session)
 		if err := s.Cache.Get(ctx, key, session); err != nil {
 			return nil, err
 		}
-		sessions = append(sessions, session)
+		sessions[i] = session
 	}
 
 	return sessions, nil
 }
 
 // Add Data to a session by key and value.
-func (s *sessionService) AddData(ctx context.Context, id domain.SID, key string, value any) error {
+func (s *Session) AddData(ctx context.Context, id domain.SID, key string, value any) error {
 	session := new(domain.Session)
 
 	if err := s.Cache.Get(ctx, id.String(), session); err != nil {
@@ -149,7 +176,7 @@ func (s *sessionService) AddData(ctx context.Context, id domain.SID, key string,
 		Ctx:   ctx,
 		Key:   id.String(),
 		Value: session,
-		TTL:   session.CreatedAt.Add(config.SESSION_TTL).Sub(time.Now()),
+		TTL:   time.Until(session.CreatedAt.Add(config.SESSION_TTL)),
 	}); err != nil {
 		return fmt.Errorf("SessionService.AddData: failed to set updated session: %w", err)
 	}
@@ -158,7 +185,7 @@ func (s *sessionService) AddData(ctx context.Context, id domain.SID, key string,
 }
 
 // Remove data from a session by key.
-func (s *sessionService) RemoveData(ctx context.Context, id domain.SID, key string) error {
+func (s *Session) RemoveData(ctx context.Context, id domain.SID, key string) error {
 	session := new(domain.Session)
 
 	if err := s.Cache.Get(ctx, id.String(), session); err != nil {
@@ -175,7 +202,7 @@ func (s *sessionService) RemoveData(ctx context.Context, id domain.SID, key stri
 		Ctx:   ctx,
 		Key:   id.String(),
 		Value: session,
-		TTL:   session.CreatedAt.Add(config.SESSION_TTL).Sub(time.Now()),
+		TTL:   time.Until(session.CreatedAt.Add(config.SESSION_TTL)),
 	}); err != nil {
 		return fmt.Errorf("SessionService.RemoveData: failed to set updated session: %w", err)
 	}
@@ -184,7 +211,7 @@ func (s *sessionService) RemoveData(ctx context.Context, id domain.SID, key stri
 }
 
 // Clear all data in a session.
-func (s *sessionService) ClearData(ctx context.Context, id domain.SID) error {
+func (s *Session) ClearData(ctx context.Context, id domain.SID) error {
 	session := new(domain.Session)
 
 	if err := s.Cache.Get(ctx, id.String(), session); err != nil {
@@ -201,7 +228,7 @@ func (s *sessionService) ClearData(ctx context.Context, id domain.SID) error {
 		Ctx:   ctx,
 		Key:   id.String(),
 		Value: session,
-		TTL:   session.CreatedAt.Add(config.SESSION_TTL).Sub(time.Now()),
+		TTL:   time.Until(session.CreatedAt.Add(config.SESSION_TTL)),
 	}); err != nil {
 		return fmt.Errorf("SessionService.ClearData: failed to set updated session: %w", err)
 	}

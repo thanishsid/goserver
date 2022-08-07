@@ -1,4 +1,4 @@
-p, register_account, any
+p, register_account, guest
 p, create_account, admin
 p, update_account, admin|manager|editor|client
 p, delete_own_account, admin|manager|editor|client
@@ -6,11 +6,12 @@ p, delete_another_account, admin
 p, recover_account, admin
 
 p, view_me, admin|manager|editor|client
-p, login, any
+p, login, guest
 p, logout, admin|manager|editor|client
 p, upload_image, any
 
 p, view_user, admin|manager
 p, view_users, admin|manager
+p, view_user_sessions, admin|manager
 p, view_roles, admin
 

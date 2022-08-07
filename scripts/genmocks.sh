@@ -11,6 +11,6 @@ mockgen -package mocktoken -destination mock/mocktoken/mock_token.go github.com/
 # Serices Mocks
 
 mockgen -package mockservice -destination mock/mockservice/mock_services.go github.com/thanishsid/goserver/domain \
-    UserService,ImageService
+    UserService,ImageService,SessionService
 
 echo "mock files generated successfully"

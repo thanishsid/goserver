@@ -5,8 +5,8 @@ package resolver
 
 import (
 	"context"
-	"fmt"
 
+	"github.com/google/uuid"
 	"github.com/thanishsid/goserver/config"
 	"github.com/thanishsid/goserver/domain"
 	"github.com/thanishsid/goserver/graphql/cookiemanager"
@@ -16,25 +16,21 @@ import (
 
 // Login is the resolver for the Login field.
 func (r *mutationsResolver) Login(ctx context.Context, email string, password string) (*model.Message, error) {
-	user, err := r.UserService.VerifyCredentials(ctx, domain.VerifyCredentialsInput{
-		Email:    email,
-		Password: password,
+	useragent, err := UseragentFor(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	session, err := r.AuthService.PasswordLogin(ctx, domain.PasswordLoginInput{
+		Email:     email,
+		Password:  password,
+		UserAgent: useragent,
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	sessionID, err := r.SessionService.Create(ctx, user.ID, "abcdefg", nil)
-	if err != nil {
-		return nil, err
-	}
-
-	cookieManager, err := cookiemanager.For(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	cookieManager.SetCookie(config.SESSION_COOKIE_NAME, sessionID.String(), config.SESSION_TTL)
+	cookiemanager.For(ctx).SetCookie(config.SESSION_COOKIE_NAME, session.ID.String(), config.SESSION_TTL)
 
 	return &model.Message{
 		Message: "Login Successful",
@@ -52,6 +48,8 @@ func (r *mutationsResolver) Logout(ctx context.Context) (*model.Message, error) 
 		return nil, err
 	}
 
+	cookiemanager.For(ctx).RemoveCookie(session.ID.String())
+
 	return &model.Message{
 		Message: "Logout Successful",
 	}, nil
@@ -59,33 +57,33 @@ func (r *mutationsResolver) Logout(ctx context.Context) (*model.Message, error) 
 
 // LogoutFromAllDevices is the resolver for the LogoutFromAllDevices field.
 func (r *mutationsResolver) LogoutFromAllDevices(ctx context.Context) (*model.Message, error) {
-	panic(fmt.Errorf("not implemented"))
-}
-
-// GetCurrentSession is the resolver for the GetCurrentSession field.
-func (r *queriesResolver) GetCurrentSession(ctx context.Context) (*domain.Session, error) {
-	panic(fmt.Errorf("not implemented"))
-}
-
-// GetMySessions is the resolver for the GetMySessions field.
-func (r *queriesResolver) GetMySessions(ctx context.Context) ([]*domain.Session, error) {
-
 	session, err := domain.SessionFor(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	sessions, err := r.SessionService.GetAllByUserID(ctx, session.UserID)
+	if err := r.SessionService.DeleteAllByUserID(ctx, session.UserID); err != nil {
+		return nil, err
+	}
+
+	return &model.Message{
+		Message: "logged out from all devices successfully",
+	}, nil
+}
+
+// GetSessionsByUser is the resolver for the GetSessionsByUser field.
+func (r *queriesResolver) GetSessionsByUser(ctx context.Context, id string) ([]*domain.Session, error) {
+	userID, err := uuid.Parse(id)
+	if err != nil {
+		return nil, err
+	}
+
+	sessions, err := r.SessionService.GetAllByUserID(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
 
 	return sessions, nil
-}
-
-// GetSessionsByUser is the resolver for the GetSessionsByUser field.
-func (r *queriesResolver) GetSessionsByUser(ctx context.Context, id string) ([]*domain.Session, error) {
-	panic(fmt.Errorf("not implemented"))
 }
 
 // ID is the resolver for the id field.

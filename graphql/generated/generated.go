@@ -40,13 +40,16 @@ type Config struct {
 type ResolverRoot interface {
 	Image() ImageResolver
 	Mutations() MutationsResolver
+	MyInfo() MyInfoResolver
 	Queries() QueriesResolver
 	Session() SessionResolver
 	User() UserResolver
 }
 
 type DirectiveRoot struct {
-	EnforceAction func(ctx context.Context, obj interface{}, next graphql.Resolver, action string) (res interface{}, err error)
+	Authenticated   func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
+	Authorize       func(ctx context.Context, obj interface{}, next graphql.Resolver, roles *string, allowOwner *bool, mustOwn *bool) (res interface{}, err error)
+	Unauthenticated func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
 }
 
 type ComplexityRoot struct {
@@ -56,17 +59,6 @@ type ComplexityRoot struct {
 		Link      func(childComplexity int) int
 		Title     func(childComplexity int) int
 		UpdatedAt func(childComplexity int) int
-	}
-
-	ImageCollection struct {
-		Edges    func(childComplexity int) int
-		Nodes    func(childComplexity int) int
-		PageInfo func(childComplexity int) int
-	}
-
-	ImageEdge struct {
-		Cursor func(childComplexity int) int
-		Node   func(childComplexity int) int
 	}
 
 	Message struct {
@@ -87,6 +79,11 @@ type ComplexityRoot struct {
 		UploadImage              func(childComplexity int, file graphql.Upload, title *string) int
 	}
 
+	MyInfo struct {
+		Account func(childComplexity int) int
+		Session func(childComplexity int) int
+	}
+
 	PageInfo struct {
 		EndCursor   func(childComplexity int) int
 		HasNextPage func(childComplexity int) int
@@ -94,10 +91,8 @@ type ComplexityRoot struct {
 	}
 
 	Queries struct {
-		GetCurrentSession func(childComplexity int) int
-		GetMySessions     func(childComplexity int) int
 		GetSessionsByUser func(childComplexity int, id string) int
-		Me                func(childComplexity int) int
+		MyInfo            func(childComplexity int) int
 		Roles             func(childComplexity int) int
 		User              func(childComplexity int, id string) int
 		Users             func(childComplexity int, query *string, role *string, showDeleted *bool, limit *int, cursor *string) int
@@ -123,6 +118,7 @@ type ComplexityRoot struct {
 		ID        func(childComplexity int) int
 		Picture   func(childComplexity int) int
 		Role      func(childComplexity int) int
+		Sessions  func(childComplexity int) int
 		UpdatedAt func(childComplexity int) int
 		Username  func(childComplexity int) int
 	}
@@ -156,11 +152,12 @@ type MutationsResolver interface {
 	DeleteAnotherAccount(ctx context.Context, id string) (*model.Message, error)
 	RecoverAccount(ctx context.Context, id string) (*model.Message, error)
 }
+type MyInfoResolver interface {
+	Account(ctx context.Context, obj *model.MyInfo) (*domain.User, error)
+}
 type QueriesResolver interface {
-	Me(ctx context.Context) (*domain.User, error)
+	MyInfo(ctx context.Context) (*model.MyInfo, error)
 	Roles(ctx context.Context) ([]*model.Role, error)
-	GetCurrentSession(ctx context.Context) (*domain.Session, error)
-	GetMySessions(ctx context.Context) ([]*domain.Session, error)
 	GetSessionsByUser(ctx context.Context, id string) ([]*domain.Session, error)
 	User(ctx context.Context, id string) (*domain.User, error)
 	Users(ctx context.Context, query *string, role *string, showDeleted *bool, limit *int, cursor *string) (*model.UserCollection, error)
@@ -173,6 +170,7 @@ type UserResolver interface {
 
 	Role(ctx context.Context, obj *domain.User) (string, error)
 	Picture(ctx context.Context, obj *domain.User) (*domain.Image, error)
+	Sessions(ctx context.Context, obj *domain.User) ([]*domain.Session, error)
 
 	DeletedAt(ctx context.Context, obj *domain.User) (*time.Time, error)
 }
@@ -226,41 +224,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Image.UpdatedAt(childComplexity), true
-
-	case "ImageCollection.edges":
-		if e.complexity.ImageCollection.Edges == nil {
-			break
-		}
-
-		return e.complexity.ImageCollection.Edges(childComplexity), true
-
-	case "ImageCollection.nodes":
-		if e.complexity.ImageCollection.Nodes == nil {
-			break
-		}
-
-		return e.complexity.ImageCollection.Nodes(childComplexity), true
-
-	case "ImageCollection.pageInfo":
-		if e.complexity.ImageCollection.PageInfo == nil {
-			break
-		}
-
-		return e.complexity.ImageCollection.PageInfo(childComplexity), true
-
-	case "ImageEdge.cursor":
-		if e.complexity.ImageEdge.Cursor == nil {
-			break
-		}
-
-		return e.complexity.ImageEdge.Cursor(childComplexity), true
-
-	case "ImageEdge.node":
-		if e.complexity.ImageEdge.Node == nil {
-			break
-		}
-
-		return e.complexity.ImageEdge.Node(childComplexity), true
 
 	case "Message.message":
 		if e.complexity.Message.Message == nil {
@@ -386,6 +349,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutations.UploadImage(childComplexity, args["file"].(graphql.Upload), args["title"].(*string)), true
 
+	case "MyInfo.account":
+		if e.complexity.MyInfo.Account == nil {
+			break
+		}
+
+		return e.complexity.MyInfo.Account(childComplexity), true
+
+	case "MyInfo.session":
+		if e.complexity.MyInfo.Session == nil {
+			break
+		}
+
+		return e.complexity.MyInfo.Session(childComplexity), true
+
 	case "PageInfo.endCursor":
 		if e.complexity.PageInfo.EndCursor == nil {
 			break
@@ -407,20 +384,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.PageInfo.StartCursor(childComplexity), true
 
-	case "Queries.GetCurrentSession":
-		if e.complexity.Queries.GetCurrentSession == nil {
-			break
-		}
-
-		return e.complexity.Queries.GetCurrentSession(childComplexity), true
-
-	case "Queries.GetMySessions":
-		if e.complexity.Queries.GetMySessions == nil {
-			break
-		}
-
-		return e.complexity.Queries.GetMySessions(childComplexity), true
-
 	case "Queries.GetSessionsByUser":
 		if e.complexity.Queries.GetSessionsByUser == nil {
 			break
@@ -433,12 +396,12 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Queries.GetSessionsByUser(childComplexity, args["id"].(string)), true
 
-	case "Queries.me":
-		if e.complexity.Queries.Me == nil {
+	case "Queries.myInfo":
+		if e.complexity.Queries.MyInfo == nil {
 			break
 		}
 
-		return e.complexity.Queries.Me(childComplexity), true
+		return e.complexity.Queries.MyInfo(childComplexity), true
 
 	case "Queries.roles":
 		if e.complexity.Queries.Roles == nil {
@@ -561,6 +524,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.User.Role(childComplexity), true
+
+	case "User.sessions":
+		if e.complexity.User.Sessions == nil {
+			break
+		}
+
+		return e.complexity.User.Sessions(childComplexity), true
 
 	case "User.updatedAt":
 		if e.complexity.User.UpdatedAt == nil {
@@ -705,9 +675,26 @@ directive @goTag(
 ) on INPUT_FIELD_DEFINITION | FIELD_DEFINITION
 
 # Custom Directives
-directive @enforceAction(action: String!) on FIELD_DEFINITION
+
+directive @authenticated on FIELD_DEFINITION
+
+directive @unauthenticated on FIELD_DEFINITION
+
+directive @authorize(
+	roles: String
+	allowOwner: Boolean
+	mustOwn: Boolean
+) on FIELD_DEFINITION
 `, BuiltIn: false},
-	{Name: "../schema/general.graphqls", Input: `type PageInfo {
+	{Name: "../schema/general.graphqls", Input: `type Image @goModel(model: "github.com/thanishsid/goserver/domain.Image") {
+	id: ID!
+	title: String
+	link: String!
+	createdAt: Time!
+	updatedAt: Time!
+}
+
+type PageInfo {
 	startCursor: ID!
 	endCursor: ID!
 	hasNextPage: Boolean!
@@ -721,41 +708,26 @@ type Role {
 type Message {
 	message: String!
 }
-`, BuiltIn: false},
-	{Name: "../schema/image.graphqls", Input: `type Image @goModel(model: "github.com/thanishsid/goserver/domain.Image") {
-	id: ID!
-	title: String
-	link: String!
-	createdAt: Time!
-	updatedAt: Time!
-}
 
-type ImageEdge {
-	cursor: String!
-	node: Image!
-}
-
-type ImageCollection {
-	nodes: [Image!]!
-	edges: [ImageEdge!]!
-	pageInfo: PageInfo!
+type MyInfo {
+	account: User! @goField(forceResolver: true)
+	session: Session!
 }
 `, BuiltIn: false},
-	{Name: "../schema/schema.graphqls", Input: `# Main Schema
+	{Name: "../schema/main.graphqls", Input: `# Main Schema
 schema {
 	query: Queries
 	mutation: Mutations
 }
 
 type Queries {
-	me: User @enforceAction(action: "view_me")
+	myInfo: MyInfo! @authenticated
 
-	roles: [Role!]! @enforceAction(action: "view_roles")
+	roles: [Role!]! @authorize(roles: "admin,manager")
 }
 
 type Mutations {
 	UploadImage(file: Upload!, title: String): Image!
-		@enforceAction(action: "upload_image")
 }
 `, BuiltIn: false},
 	{Name: "../schema/session.graphqls", Input: `type Session @goModel(model: "github.com/thanishsid/goserver/domain.Session") {
@@ -766,22 +738,17 @@ type Mutations {
 }
 
 extend type Mutations {
-	Login(email: String!, password: String!): Message!
-		@enforceAction(action: "login")
+	Login(email: String!, password: String!): Message! @unauthenticated
 
-	Logout: Message! @enforceAction(action: "logout")
+	Logout: Message! @authenticated
 
-	LogoutFromAllDevices: Message!
-		@enforceAction(action: "logout_from_all_devices")
+	LogoutFromAllDevices: Message! @authenticated
 }
 
 extend type Queries {
-	GetCurrentSession: Session! @enforceAction(action: "get_current_session")
-
-	GetMySessions: [Session!]! @enforceAction(action: "get_my_sessions")
-
 	GetSessionsByUser(id: ID!): [Session!]!
-		@enforceAction(action: "get_sessions_by_user")
+		@authenticated
+		@authorize(roles: "admin,manager")
 }
 `, BuiltIn: false},
 	{Name: "../schema/user.graphqls", Input: `type User @goModel(model: "github.com/thanishsid/goserver/domain.User") {
@@ -791,6 +758,10 @@ extend type Queries {
 	fullName: String!
 	role: String!
 	picture: Image @goField(forceResolver: true)
+	sessions: [Session!]!
+		@goField(forceResolver: true)
+		@authenticated
+		@authorize(roles: "admin,manager", allowOwner: true)
 	createdAt: Time!
 	updatedAt: Time!
 	deletedAt: Time
@@ -837,28 +808,29 @@ input UpdateProfileInput {
 # User Mutations
 extend type Mutations {
 	StartAccountRegistration(input: StartRegistrationInput!): Message!
-		@enforceAction(action: "register_account")
+		@unauthenticated
 
 	StartAccountCreation(input: StartUserCreationInput!): Message!
-		@enforceAction(action: "create_account")
+		@authenticated
+		@authorize(roles: "admin")
 
 	CompleteRegistration(input: CompleteRegistrationInput!): Message!
-		@enforceAction(action: "register_account")
+		@unauthenticated
 
-	UpdateProfile(input: UpdateProfileInput!): Message!
-		@enforceAction(action: "update_account")
+	UpdateProfile(input: UpdateProfileInput!): Message! @authenticated
 
-	DeleteOwnAccount: Message! @enforceAction(action: "delete_own_account")
+	DeleteOwnAccount: Message! @authenticated
 
 	DeleteAnotherAccount(id: ID!): Message!
-		@enforceAction(action: "delete_another_account")
+		@authenticated
+		@authorize(roles: "admin")
 
-	RecoverAccount(id: ID!): Message! @enforceAction(action: "recover_account")
+	RecoverAccount(id: ID!): Message! @authenticated @authorize(roles: "admin")
 }
 
 # User Queries
 extend type Queries {
-	user(id: ID!): User! @enforceAction(action: "view_user")
+	user(id: ID!): User! @authenticated @authorize(roles: "admin,manager")
 
 	users(
 		query: String
@@ -866,7 +838,7 @@ extend type Queries {
 		showDeleted: Boolean
 		limit: Int
 		cursor: String
-	): UserCollection! @enforceAction(action: "view_users")
+	): UserCollection! @authenticated @authorize(roles: "admin,manager")
 }
 `, BuiltIn: false},
 }
@@ -876,18 +848,36 @@ var parsedSchema = gqlparser.MustLoadSchema(sources...)
 
 // region    ***************************** args.gotpl *****************************
 
-func (ec *executionContext) dir_enforceAction_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+func (ec *executionContext) dir_authorize_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 string
-	if tmp, ok := rawArgs["action"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("action"))
-		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+	var arg0 *string
+	if tmp, ok := rawArgs["roles"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("roles"))
+		arg0, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["action"] = arg0
+	args["roles"] = arg0
+	var arg1 *bool
+	if tmp, ok := rawArgs["allowOwner"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("allowOwner"))
+		arg1, err = ec.unmarshalOBoolean2ᚖbool(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["allowOwner"] = arg1
+	var arg2 *bool
+	if tmp, ok := rawArgs["mustOwn"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("mustOwn"))
+		arg2, err = ec.unmarshalOBoolean2ᚖbool(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["mustOwn"] = arg2
 	return args, nil
 }
 
@@ -1380,264 +1370,6 @@ func (ec *executionContext) fieldContext_Image_updatedAt(ctx context.Context, fi
 	return fc, nil
 }
 
-func (ec *executionContext) _ImageCollection_nodes(ctx context.Context, field graphql.CollectedField, obj *model.ImageCollection) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ImageCollection_nodes(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Nodes, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.([]*domain.Image)
-	fc.Result = res
-	return ec.marshalNImage2ᚕᚖgithubᚗcomᚋthanishsidᚋgoserverᚋdomainᚐImageᚄ(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_ImageCollection_nodes(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ImageCollection",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "id":
-				return ec.fieldContext_Image_id(ctx, field)
-			case "title":
-				return ec.fieldContext_Image_title(ctx, field)
-			case "link":
-				return ec.fieldContext_Image_link(ctx, field)
-			case "createdAt":
-				return ec.fieldContext_Image_createdAt(ctx, field)
-			case "updatedAt":
-				return ec.fieldContext_Image_updatedAt(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type Image", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ImageCollection_edges(ctx context.Context, field graphql.CollectedField, obj *model.ImageCollection) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ImageCollection_edges(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Edges, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.([]*model.ImageEdge)
-	fc.Result = res
-	return ec.marshalNImageEdge2ᚕᚖgithubᚗcomᚋthanishsidᚋgoserverᚋgraphqlᚋmodelᚐImageEdgeᚄ(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_ImageCollection_edges(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ImageCollection",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "cursor":
-				return ec.fieldContext_ImageEdge_cursor(ctx, field)
-			case "node":
-				return ec.fieldContext_ImageEdge_node(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type ImageEdge", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ImageCollection_pageInfo(ctx context.Context, field graphql.CollectedField, obj *model.ImageCollection) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ImageCollection_pageInfo(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.PageInfo, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*model.PageInfo)
-	fc.Result = res
-	return ec.marshalNPageInfo2ᚖgithubᚗcomᚋthanishsidᚋgoserverᚋgraphqlᚋmodelᚐPageInfo(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_ImageCollection_pageInfo(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ImageCollection",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "startCursor":
-				return ec.fieldContext_PageInfo_startCursor(ctx, field)
-			case "endCursor":
-				return ec.fieldContext_PageInfo_endCursor(ctx, field)
-			case "hasNextPage":
-				return ec.fieldContext_PageInfo_hasNextPage(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type PageInfo", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ImageEdge_cursor(ctx context.Context, field graphql.CollectedField, obj *model.ImageEdge) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ImageEdge_cursor(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Cursor, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(string)
-	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_ImageEdge_cursor(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ImageEdge",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ImageEdge_node(ctx context.Context, field graphql.CollectedField, obj *model.ImageEdge) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ImageEdge_node(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Node, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*domain.Image)
-	fc.Result = res
-	return ec.marshalNImage2ᚖgithubᚗcomᚋthanishsidᚋgoserverᚋdomainᚐImage(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_ImageEdge_node(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ImageEdge",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "id":
-				return ec.fieldContext_Image_id(ctx, field)
-			case "title":
-				return ec.fieldContext_Image_title(ctx, field)
-			case "link":
-				return ec.fieldContext_Image_link(ctx, field)
-			case "createdAt":
-				return ec.fieldContext_Image_createdAt(ctx, field)
-			case "updatedAt":
-				return ec.fieldContext_Image_updatedAt(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type Image", field.Name)
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _Message_message(ctx context.Context, field graphql.CollectedField, obj *model.Message) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Message_message(ctx, field)
 	if err != nil {
@@ -1695,32 +1427,8 @@ func (ec *executionContext) _Mutations_UploadImage(ctx context.Context, field gr
 		}
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		directive0 := func(rctx context.Context) (interface{}, error) {
-			ctx = rctx // use context from middleware stack in children
-			return ec.resolvers.Mutations().UploadImage(rctx, fc.Args["file"].(graphql.Upload), fc.Args["title"].(*string))
-		}
-		directive1 := func(ctx context.Context) (interface{}, error) {
-			action, err := ec.unmarshalNString2string(ctx, "upload_image")
-			if err != nil {
-				return nil, err
-			}
-			if ec.directives.EnforceAction == nil {
-				return nil, errors.New("directive enforceAction is not implemented")
-			}
-			return ec.directives.EnforceAction(ctx, nil, directive0, action)
-		}
-
-		tmp, err := directive1(rctx)
-		if err != nil {
-			return nil, graphql.ErrorOnPath(ctx, err)
-		}
-		if tmp == nil {
-			return nil, nil
-		}
-		if data, ok := tmp.(*domain.Image); ok {
-			return data, nil
-		}
-		return nil, fmt.Errorf(`unexpected type %T from directive, should be *github.com/thanishsid/goserver/domain.Image`, tmp)
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutations().UploadImage(rctx, fc.Args["file"].(graphql.Upload), fc.Args["title"].(*string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -1791,14 +1499,10 @@ func (ec *executionContext) _Mutations_Login(ctx context.Context, field graphql.
 			return ec.resolvers.Mutations().Login(rctx, fc.Args["email"].(string), fc.Args["password"].(string))
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			action, err := ec.unmarshalNString2string(ctx, "login")
-			if err != nil {
-				return nil, err
+			if ec.directives.Unauthenticated == nil {
+				return nil, errors.New("directive unauthenticated is not implemented")
 			}
-			if ec.directives.EnforceAction == nil {
-				return nil, errors.New("directive enforceAction is not implemented")
-			}
-			return ec.directives.EnforceAction(ctx, nil, directive0, action)
+			return ec.directives.Unauthenticated(ctx, nil, directive0)
 		}
 
 		tmp, err := directive1(rctx)
@@ -1874,14 +1578,10 @@ func (ec *executionContext) _Mutations_Logout(ctx context.Context, field graphql
 			return ec.resolvers.Mutations().Logout(rctx)
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			action, err := ec.unmarshalNString2string(ctx, "logout")
-			if err != nil {
-				return nil, err
+			if ec.directives.Authenticated == nil {
+				return nil, errors.New("directive authenticated is not implemented")
 			}
-			if ec.directives.EnforceAction == nil {
-				return nil, errors.New("directive enforceAction is not implemented")
-			}
-			return ec.directives.EnforceAction(ctx, nil, directive0, action)
+			return ec.directives.Authenticated(ctx, nil, directive0)
 		}
 
 		tmp, err := directive1(rctx)
@@ -1946,14 +1646,10 @@ func (ec *executionContext) _Mutations_LogoutFromAllDevices(ctx context.Context,
 			return ec.resolvers.Mutations().LogoutFromAllDevices(rctx)
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			action, err := ec.unmarshalNString2string(ctx, "logout_from_all_devices")
-			if err != nil {
-				return nil, err
+			if ec.directives.Authenticated == nil {
+				return nil, errors.New("directive authenticated is not implemented")
 			}
-			if ec.directives.EnforceAction == nil {
-				return nil, errors.New("directive enforceAction is not implemented")
-			}
-			return ec.directives.EnforceAction(ctx, nil, directive0, action)
+			return ec.directives.Authenticated(ctx, nil, directive0)
 		}
 
 		tmp, err := directive1(rctx)
@@ -2018,14 +1714,10 @@ func (ec *executionContext) _Mutations_StartAccountRegistration(ctx context.Cont
 			return ec.resolvers.Mutations().StartAccountRegistration(rctx, fc.Args["input"].(model.StartRegistrationInput))
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			action, err := ec.unmarshalNString2string(ctx, "register_account")
-			if err != nil {
-				return nil, err
+			if ec.directives.Unauthenticated == nil {
+				return nil, errors.New("directive unauthenticated is not implemented")
 			}
-			if ec.directives.EnforceAction == nil {
-				return nil, errors.New("directive enforceAction is not implemented")
-			}
-			return ec.directives.EnforceAction(ctx, nil, directive0, action)
+			return ec.directives.Unauthenticated(ctx, nil, directive0)
 		}
 
 		tmp, err := directive1(rctx)
@@ -2101,17 +1793,23 @@ func (ec *executionContext) _Mutations_StartAccountCreation(ctx context.Context,
 			return ec.resolvers.Mutations().StartAccountCreation(rctx, fc.Args["input"].(model.StartUserCreationInput))
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			action, err := ec.unmarshalNString2string(ctx, "create_account")
+			if ec.directives.Authenticated == nil {
+				return nil, errors.New("directive authenticated is not implemented")
+			}
+			return ec.directives.Authenticated(ctx, nil, directive0)
+		}
+		directive2 := func(ctx context.Context) (interface{}, error) {
+			roles, err := ec.unmarshalOString2ᚖstring(ctx, "admin")
 			if err != nil {
 				return nil, err
 			}
-			if ec.directives.EnforceAction == nil {
-				return nil, errors.New("directive enforceAction is not implemented")
+			if ec.directives.Authorize == nil {
+				return nil, errors.New("directive authorize is not implemented")
 			}
-			return ec.directives.EnforceAction(ctx, nil, directive0, action)
+			return ec.directives.Authorize(ctx, nil, directive1, roles, nil, nil)
 		}
 
-		tmp, err := directive1(rctx)
+		tmp, err := directive2(rctx)
 		if err != nil {
 			return nil, graphql.ErrorOnPath(ctx, err)
 		}
@@ -2184,14 +1882,10 @@ func (ec *executionContext) _Mutations_CompleteRegistration(ctx context.Context,
 			return ec.resolvers.Mutations().CompleteRegistration(rctx, fc.Args["input"].(model.CompleteRegistrationInput))
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			action, err := ec.unmarshalNString2string(ctx, "register_account")
-			if err != nil {
-				return nil, err
+			if ec.directives.Unauthenticated == nil {
+				return nil, errors.New("directive unauthenticated is not implemented")
 			}
-			if ec.directives.EnforceAction == nil {
-				return nil, errors.New("directive enforceAction is not implemented")
-			}
-			return ec.directives.EnforceAction(ctx, nil, directive0, action)
+			return ec.directives.Unauthenticated(ctx, nil, directive0)
 		}
 
 		tmp, err := directive1(rctx)
@@ -2267,14 +1961,10 @@ func (ec *executionContext) _Mutations_UpdateProfile(ctx context.Context, field 
 			return ec.resolvers.Mutations().UpdateProfile(rctx, fc.Args["input"].(model.UpdateProfileInput))
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			action, err := ec.unmarshalNString2string(ctx, "update_account")
-			if err != nil {
-				return nil, err
+			if ec.directives.Authenticated == nil {
+				return nil, errors.New("directive authenticated is not implemented")
 			}
-			if ec.directives.EnforceAction == nil {
-				return nil, errors.New("directive enforceAction is not implemented")
-			}
-			return ec.directives.EnforceAction(ctx, nil, directive0, action)
+			return ec.directives.Authenticated(ctx, nil, directive0)
 		}
 
 		tmp, err := directive1(rctx)
@@ -2350,14 +2040,10 @@ func (ec *executionContext) _Mutations_DeleteOwnAccount(ctx context.Context, fie
 			return ec.resolvers.Mutations().DeleteOwnAccount(rctx)
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			action, err := ec.unmarshalNString2string(ctx, "delete_own_account")
-			if err != nil {
-				return nil, err
+			if ec.directives.Authenticated == nil {
+				return nil, errors.New("directive authenticated is not implemented")
 			}
-			if ec.directives.EnforceAction == nil {
-				return nil, errors.New("directive enforceAction is not implemented")
-			}
-			return ec.directives.EnforceAction(ctx, nil, directive0, action)
+			return ec.directives.Authenticated(ctx, nil, directive0)
 		}
 
 		tmp, err := directive1(rctx)
@@ -2422,17 +2108,23 @@ func (ec *executionContext) _Mutations_DeleteAnotherAccount(ctx context.Context,
 			return ec.resolvers.Mutations().DeleteAnotherAccount(rctx, fc.Args["id"].(string))
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			action, err := ec.unmarshalNString2string(ctx, "delete_another_account")
+			if ec.directives.Authenticated == nil {
+				return nil, errors.New("directive authenticated is not implemented")
+			}
+			return ec.directives.Authenticated(ctx, nil, directive0)
+		}
+		directive2 := func(ctx context.Context) (interface{}, error) {
+			roles, err := ec.unmarshalOString2ᚖstring(ctx, "admin")
 			if err != nil {
 				return nil, err
 			}
-			if ec.directives.EnforceAction == nil {
-				return nil, errors.New("directive enforceAction is not implemented")
+			if ec.directives.Authorize == nil {
+				return nil, errors.New("directive authorize is not implemented")
 			}
-			return ec.directives.EnforceAction(ctx, nil, directive0, action)
+			return ec.directives.Authorize(ctx, nil, directive1, roles, nil, nil)
 		}
 
-		tmp, err := directive1(rctx)
+		tmp, err := directive2(rctx)
 		if err != nil {
 			return nil, graphql.ErrorOnPath(ctx, err)
 		}
@@ -2505,17 +2197,23 @@ func (ec *executionContext) _Mutations_RecoverAccount(ctx context.Context, field
 			return ec.resolvers.Mutations().RecoverAccount(rctx, fc.Args["id"].(string))
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			action, err := ec.unmarshalNString2string(ctx, "recover_account")
+			if ec.directives.Authenticated == nil {
+				return nil, errors.New("directive authenticated is not implemented")
+			}
+			return ec.directives.Authenticated(ctx, nil, directive0)
+		}
+		directive2 := func(ctx context.Context) (interface{}, error) {
+			roles, err := ec.unmarshalOString2ᚖstring(ctx, "admin")
 			if err != nil {
 				return nil, err
 			}
-			if ec.directives.EnforceAction == nil {
-				return nil, errors.New("directive enforceAction is not implemented")
+			if ec.directives.Authorize == nil {
+				return nil, errors.New("directive authorize is not implemented")
 			}
-			return ec.directives.EnforceAction(ctx, nil, directive0, action)
+			return ec.directives.Authorize(ctx, nil, directive1, roles, nil, nil)
 		}
 
-		tmp, err := directive1(rctx)
+		tmp, err := directive2(rctx)
 		if err != nil {
 			return nil, graphql.ErrorOnPath(ctx, err)
 		}
@@ -2566,6 +2264,126 @@ func (ec *executionContext) fieldContext_Mutations_RecoverAccount(ctx context.Co
 	if fc.Args, err = ec.field_Mutations_RecoverAccount_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MyInfo_account(ctx context.Context, field graphql.CollectedField, obj *model.MyInfo) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_MyInfo_account(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.MyInfo().Account(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*domain.User)
+	fc.Result = res
+	return ec.marshalNUser2ᚖgithubᚗcomᚋthanishsidᚋgoserverᚋdomainᚐUser(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_MyInfo_account(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MyInfo",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_User_id(ctx, field)
+			case "username":
+				return ec.fieldContext_User_username(ctx, field)
+			case "email":
+				return ec.fieldContext_User_email(ctx, field)
+			case "fullName":
+				return ec.fieldContext_User_fullName(ctx, field)
+			case "role":
+				return ec.fieldContext_User_role(ctx, field)
+			case "picture":
+				return ec.fieldContext_User_picture(ctx, field)
+			case "sessions":
+				return ec.fieldContext_User_sessions(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_User_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_User_updatedAt(ctx, field)
+			case "deletedAt":
+				return ec.fieldContext_User_deletedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MyInfo_session(ctx context.Context, field graphql.CollectedField, obj *model.MyInfo) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_MyInfo_session(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Session, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*domain.Session)
+	fc.Result = res
+	return ec.marshalNSession2ᚖgithubᚗcomᚋthanishsidᚋgoserverᚋdomainᚐSession(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_MyInfo_session(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MyInfo",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Session_id(ctx, field)
+			case "userAgent":
+				return ec.fieldContext_Session_userAgent(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Session_createdAt(ctx, field)
+			case "accessedAt":
+				return ec.fieldContext_Session_accessedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Session", field.Name)
+		},
 	}
 	return fc, nil
 }
@@ -2702,8 +2520,8 @@ func (ec *executionContext) fieldContext_PageInfo_hasNextPage(ctx context.Contex
 	return fc, nil
 }
 
-func (ec *executionContext) _Queries_me(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Queries_me(ctx, field)
+func (ec *executionContext) _Queries_myInfo(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Queries_myInfo(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -2717,17 +2535,13 @@ func (ec *executionContext) _Queries_me(ctx context.Context, field graphql.Colle
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		directive0 := func(rctx context.Context) (interface{}, error) {
 			ctx = rctx // use context from middleware stack in children
-			return ec.resolvers.Queries().Me(rctx)
+			return ec.resolvers.Queries().MyInfo(rctx)
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			action, err := ec.unmarshalNString2string(ctx, "view_me")
-			if err != nil {
-				return nil, err
+			if ec.directives.Authenticated == nil {
+				return nil, errors.New("directive authenticated is not implemented")
 			}
-			if ec.directives.EnforceAction == nil {
-				return nil, errors.New("directive enforceAction is not implemented")
-			}
-			return ec.directives.EnforceAction(ctx, nil, directive0, action)
+			return ec.directives.Authenticated(ctx, nil, directive0)
 		}
 
 		tmp, err := directive1(rctx)
@@ -2737,24 +2551,27 @@ func (ec *executionContext) _Queries_me(ctx context.Context, field graphql.Colle
 		if tmp == nil {
 			return nil, nil
 		}
-		if data, ok := tmp.(*domain.User); ok {
+		if data, ok := tmp.(*model.MyInfo); ok {
 			return data, nil
 		}
-		return nil, fmt.Errorf(`unexpected type %T from directive, should be *github.com/thanishsid/goserver/domain.User`, tmp)
+		return nil, fmt.Errorf(`unexpected type %T from directive, should be *github.com/thanishsid/goserver/graphql/model.MyInfo`, tmp)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
-	res := resTmp.(*domain.User)
+	res := resTmp.(*model.MyInfo)
 	fc.Result = res
-	return ec.marshalOUser2ᚖgithubᚗcomᚋthanishsidᚋgoserverᚋdomainᚐUser(ctx, field.Selections, res)
+	return ec.marshalNMyInfo2ᚖgithubᚗcomᚋthanishsidᚋgoserverᚋgraphqlᚋmodelᚐMyInfo(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_Queries_me(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Queries_myInfo(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Queries",
 		Field:      field,
@@ -2762,26 +2579,12 @@ func (ec *executionContext) fieldContext_Queries_me(ctx context.Context, field g
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "id":
-				return ec.fieldContext_User_id(ctx, field)
-			case "username":
-				return ec.fieldContext_User_username(ctx, field)
-			case "email":
-				return ec.fieldContext_User_email(ctx, field)
-			case "fullName":
-				return ec.fieldContext_User_fullName(ctx, field)
-			case "role":
-				return ec.fieldContext_User_role(ctx, field)
-			case "picture":
-				return ec.fieldContext_User_picture(ctx, field)
-			case "createdAt":
-				return ec.fieldContext_User_createdAt(ctx, field)
-			case "updatedAt":
-				return ec.fieldContext_User_updatedAt(ctx, field)
-			case "deletedAt":
-				return ec.fieldContext_User_deletedAt(ctx, field)
+			case "account":
+				return ec.fieldContext_MyInfo_account(ctx, field)
+			case "session":
+				return ec.fieldContext_MyInfo_session(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type MyInfo", field.Name)
 		},
 	}
 	return fc, nil
@@ -2805,14 +2608,14 @@ func (ec *executionContext) _Queries_roles(ctx context.Context, field graphql.Co
 			return ec.resolvers.Queries().Roles(rctx)
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			action, err := ec.unmarshalNString2string(ctx, "view_roles")
+			roles, err := ec.unmarshalOString2ᚖstring(ctx, "admin,manager")
 			if err != nil {
 				return nil, err
 			}
-			if ec.directives.EnforceAction == nil {
-				return nil, errors.New("directive enforceAction is not implemented")
+			if ec.directives.Authorize == nil {
+				return nil, errors.New("directive authorize is not implemented")
 			}
-			return ec.directives.EnforceAction(ctx, nil, directive0, action)
+			return ec.directives.Authorize(ctx, nil, directive0, roles, nil, nil)
 		}
 
 		tmp, err := directive1(rctx)
@@ -2861,162 +2664,6 @@ func (ec *executionContext) fieldContext_Queries_roles(ctx context.Context, fiel
 	return fc, nil
 }
 
-func (ec *executionContext) _Queries_GetCurrentSession(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Queries_GetCurrentSession(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		directive0 := func(rctx context.Context) (interface{}, error) {
-			ctx = rctx // use context from middleware stack in children
-			return ec.resolvers.Queries().GetCurrentSession(rctx)
-		}
-		directive1 := func(ctx context.Context) (interface{}, error) {
-			action, err := ec.unmarshalNString2string(ctx, "get_current_session")
-			if err != nil {
-				return nil, err
-			}
-			if ec.directives.EnforceAction == nil {
-				return nil, errors.New("directive enforceAction is not implemented")
-			}
-			return ec.directives.EnforceAction(ctx, nil, directive0, action)
-		}
-
-		tmp, err := directive1(rctx)
-		if err != nil {
-			return nil, graphql.ErrorOnPath(ctx, err)
-		}
-		if tmp == nil {
-			return nil, nil
-		}
-		if data, ok := tmp.(*domain.Session); ok {
-			return data, nil
-		}
-		return nil, fmt.Errorf(`unexpected type %T from directive, should be *github.com/thanishsid/goserver/domain.Session`, tmp)
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*domain.Session)
-	fc.Result = res
-	return ec.marshalNSession2ᚖgithubᚗcomᚋthanishsidᚋgoserverᚋdomainᚐSession(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Queries_GetCurrentSession(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Queries",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "id":
-				return ec.fieldContext_Session_id(ctx, field)
-			case "userAgent":
-				return ec.fieldContext_Session_userAgent(ctx, field)
-			case "createdAt":
-				return ec.fieldContext_Session_createdAt(ctx, field)
-			case "accessedAt":
-				return ec.fieldContext_Session_accessedAt(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type Session", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Queries_GetMySessions(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Queries_GetMySessions(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		directive0 := func(rctx context.Context) (interface{}, error) {
-			ctx = rctx // use context from middleware stack in children
-			return ec.resolvers.Queries().GetMySessions(rctx)
-		}
-		directive1 := func(ctx context.Context) (interface{}, error) {
-			action, err := ec.unmarshalNString2string(ctx, "get_my_sessions")
-			if err != nil {
-				return nil, err
-			}
-			if ec.directives.EnforceAction == nil {
-				return nil, errors.New("directive enforceAction is not implemented")
-			}
-			return ec.directives.EnforceAction(ctx, nil, directive0, action)
-		}
-
-		tmp, err := directive1(rctx)
-		if err != nil {
-			return nil, graphql.ErrorOnPath(ctx, err)
-		}
-		if tmp == nil {
-			return nil, nil
-		}
-		if data, ok := tmp.([]*domain.Session); ok {
-			return data, nil
-		}
-		return nil, fmt.Errorf(`unexpected type %T from directive, should be []*github.com/thanishsid/goserver/domain.Session`, tmp)
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.([]*domain.Session)
-	fc.Result = res
-	return ec.marshalNSession2ᚕᚖgithubᚗcomᚋthanishsidᚋgoserverᚋdomainᚐSessionᚄ(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Queries_GetMySessions(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Queries",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "id":
-				return ec.fieldContext_Session_id(ctx, field)
-			case "userAgent":
-				return ec.fieldContext_Session_userAgent(ctx, field)
-			case "createdAt":
-				return ec.fieldContext_Session_createdAt(ctx, field)
-			case "accessedAt":
-				return ec.fieldContext_Session_accessedAt(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type Session", field.Name)
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _Queries_GetSessionsByUser(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Queries_GetSessionsByUser(ctx, field)
 	if err != nil {
@@ -3035,17 +2682,23 @@ func (ec *executionContext) _Queries_GetSessionsByUser(ctx context.Context, fiel
 			return ec.resolvers.Queries().GetSessionsByUser(rctx, fc.Args["id"].(string))
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			action, err := ec.unmarshalNString2string(ctx, "get_sessions_by_user")
+			if ec.directives.Authenticated == nil {
+				return nil, errors.New("directive authenticated is not implemented")
+			}
+			return ec.directives.Authenticated(ctx, nil, directive0)
+		}
+		directive2 := func(ctx context.Context) (interface{}, error) {
+			roles, err := ec.unmarshalOString2ᚖstring(ctx, "admin,manager")
 			if err != nil {
 				return nil, err
 			}
-			if ec.directives.EnforceAction == nil {
-				return nil, errors.New("directive enforceAction is not implemented")
+			if ec.directives.Authorize == nil {
+				return nil, errors.New("directive authorize is not implemented")
 			}
-			return ec.directives.EnforceAction(ctx, nil, directive0, action)
+			return ec.directives.Authorize(ctx, nil, directive1, roles, nil, nil)
 		}
 
-		tmp, err := directive1(rctx)
+		tmp, err := directive2(rctx)
 		if err != nil {
 			return nil, graphql.ErrorOnPath(ctx, err)
 		}
@@ -3124,17 +2777,23 @@ func (ec *executionContext) _Queries_user(ctx context.Context, field graphql.Col
 			return ec.resolvers.Queries().User(rctx, fc.Args["id"].(string))
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			action, err := ec.unmarshalNString2string(ctx, "view_user")
+			if ec.directives.Authenticated == nil {
+				return nil, errors.New("directive authenticated is not implemented")
+			}
+			return ec.directives.Authenticated(ctx, nil, directive0)
+		}
+		directive2 := func(ctx context.Context) (interface{}, error) {
+			roles, err := ec.unmarshalOString2ᚖstring(ctx, "admin,manager")
 			if err != nil {
 				return nil, err
 			}
-			if ec.directives.EnforceAction == nil {
-				return nil, errors.New("directive enforceAction is not implemented")
+			if ec.directives.Authorize == nil {
+				return nil, errors.New("directive authorize is not implemented")
 			}
-			return ec.directives.EnforceAction(ctx, nil, directive0, action)
+			return ec.directives.Authorize(ctx, nil, directive1, roles, nil, nil)
 		}
 
-		tmp, err := directive1(rctx)
+		tmp, err := directive2(rctx)
 		if err != nil {
 			return nil, graphql.ErrorOnPath(ctx, err)
 		}
@@ -3181,6 +2840,8 @@ func (ec *executionContext) fieldContext_Queries_user(ctx context.Context, field
 				return ec.fieldContext_User_role(ctx, field)
 			case "picture":
 				return ec.fieldContext_User_picture(ctx, field)
+			case "sessions":
+				return ec.fieldContext_User_sessions(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_User_createdAt(ctx, field)
 			case "updatedAt":
@@ -3223,17 +2884,23 @@ func (ec *executionContext) _Queries_users(ctx context.Context, field graphql.Co
 			return ec.resolvers.Queries().Users(rctx, fc.Args["query"].(*string), fc.Args["role"].(*string), fc.Args["showDeleted"].(*bool), fc.Args["limit"].(*int), fc.Args["cursor"].(*string))
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			action, err := ec.unmarshalNString2string(ctx, "view_users")
+			if ec.directives.Authenticated == nil {
+				return nil, errors.New("directive authenticated is not implemented")
+			}
+			return ec.directives.Authenticated(ctx, nil, directive0)
+		}
+		directive2 := func(ctx context.Context) (interface{}, error) {
+			roles, err := ec.unmarshalOString2ᚖstring(ctx, "admin,manager")
 			if err != nil {
 				return nil, err
 			}
-			if ec.directives.EnforceAction == nil {
-				return nil, errors.New("directive enforceAction is not implemented")
+			if ec.directives.Authorize == nil {
+				return nil, errors.New("directive authorize is not implemented")
 			}
-			return ec.directives.EnforceAction(ctx, nil, directive0, action)
+			return ec.directives.Authorize(ctx, nil, directive1, roles, nil, nil)
 		}
 
-		tmp, err := directive1(rctx)
+		tmp, err := directive2(rctx)
 		if err != nil {
 			return nil, graphql.ErrorOnPath(ctx, err)
 		}
@@ -3958,6 +3625,94 @@ func (ec *executionContext) fieldContext_User_picture(ctx context.Context, field
 	return fc, nil
 }
 
+func (ec *executionContext) _User_sessions(ctx context.Context, field graphql.CollectedField, obj *domain.User) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_User_sessions(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		directive0 := func(rctx context.Context) (interface{}, error) {
+			ctx = rctx // use context from middleware stack in children
+			return ec.resolvers.User().Sessions(rctx, obj)
+		}
+		directive1 := func(ctx context.Context) (interface{}, error) {
+			if ec.directives.Authenticated == nil {
+				return nil, errors.New("directive authenticated is not implemented")
+			}
+			return ec.directives.Authenticated(ctx, obj, directive0)
+		}
+		directive2 := func(ctx context.Context) (interface{}, error) {
+			roles, err := ec.unmarshalOString2ᚖstring(ctx, "admin,manager")
+			if err != nil {
+				return nil, err
+			}
+			allowOwner, err := ec.unmarshalOBoolean2ᚖbool(ctx, true)
+			if err != nil {
+				return nil, err
+			}
+			if ec.directives.Authorize == nil {
+				return nil, errors.New("directive authorize is not implemented")
+			}
+			return ec.directives.Authorize(ctx, obj, directive1, roles, allowOwner, nil)
+		}
+
+		tmp, err := directive2(rctx)
+		if err != nil {
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if tmp == nil {
+			return nil, nil
+		}
+		if data, ok := tmp.([]*domain.Session); ok {
+			return data, nil
+		}
+		return nil, fmt.Errorf(`unexpected type %T from directive, should be []*github.com/thanishsid/goserver/domain.Session`, tmp)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*domain.Session)
+	fc.Result = res
+	return ec.marshalNSession2ᚕᚖgithubᚗcomᚋthanishsidᚋgoserverᚋdomainᚐSessionᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_User_sessions(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "User",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Session_id(ctx, field)
+			case "userAgent":
+				return ec.fieldContext_Session_userAgent(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Session_createdAt(ctx, field)
+			case "accessedAt":
+				return ec.fieldContext_Session_accessedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Session", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _User_createdAt(ctx context.Context, field graphql.CollectedField, obj *domain.User) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_User_createdAt(ctx, field)
 	if err != nil {
@@ -4138,6 +3893,8 @@ func (ec *executionContext) fieldContext_UserCollection_nodes(ctx context.Contex
 				return ec.fieldContext_User_role(ctx, field)
 			case "picture":
 				return ec.fieldContext_User_picture(ctx, field)
+			case "sessions":
+				return ec.fieldContext_User_sessions(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_User_createdAt(ctx, field)
 			case "updatedAt":
@@ -4348,6 +4105,8 @@ func (ec *executionContext) fieldContext_UserEdge_node(ctx context.Context, fiel
 				return ec.fieldContext_User_role(ctx, field)
 			case "picture":
 				return ec.fieldContext_User_picture(ctx, field)
+			case "sessions":
+				return ec.fieldContext_User_sessions(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_User_createdAt(ctx, field)
 			case "updatedAt":
@@ -6413,83 +6172,6 @@ func (ec *executionContext) _Image(ctx context.Context, sel ast.SelectionSet, ob
 	return out
 }
 
-var imageCollectionImplementors = []string{"ImageCollection"}
-
-func (ec *executionContext) _ImageCollection(ctx context.Context, sel ast.SelectionSet, obj *model.ImageCollection) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, imageCollectionImplementors)
-	out := graphql.NewFieldSet(fields)
-	var invalids uint32
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("ImageCollection")
-		case "nodes":
-
-			out.Values[i] = ec._ImageCollection_nodes(ctx, field, obj)
-
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		case "edges":
-
-			out.Values[i] = ec._ImageCollection_edges(ctx, field, obj)
-
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		case "pageInfo":
-
-			out.Values[i] = ec._ImageCollection_pageInfo(ctx, field, obj)
-
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch()
-	if invalids > 0 {
-		return graphql.Null
-	}
-	return out
-}
-
-var imageEdgeImplementors = []string{"ImageEdge"}
-
-func (ec *executionContext) _ImageEdge(ctx context.Context, sel ast.SelectionSet, obj *model.ImageEdge) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, imageEdgeImplementors)
-	out := graphql.NewFieldSet(fields)
-	var invalids uint32
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("ImageEdge")
-		case "cursor":
-
-			out.Values[i] = ec._ImageEdge_cursor(ctx, field, obj)
-
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		case "node":
-
-			out.Values[i] = ec._ImageEdge_node(ctx, field, obj)
-
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch()
-	if invalids > 0 {
-		return graphql.Null
-	}
-	return out
-}
-
 var messageImplementors = []string{"Message"}
 
 func (ec *executionContext) _Message(ctx context.Context, sel ast.SelectionSet, obj *model.Message) graphql.Marshaler {
@@ -6647,6 +6329,54 @@ func (ec *executionContext) _Mutations(ctx context.Context, sel ast.SelectionSet
 	return out
 }
 
+var myInfoImplementors = []string{"MyInfo"}
+
+func (ec *executionContext) _MyInfo(ctx context.Context, sel ast.SelectionSet, obj *model.MyInfo) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, myInfoImplementors)
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("MyInfo")
+		case "account":
+			field := field
+
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._MyInfo_account(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			}
+
+			out.Concurrently(i, func() graphql.Marshaler {
+				return innerFunc(ctx)
+
+			})
+		case "session":
+
+			out.Values[i] = ec._MyInfo_session(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var pageInfoImplementors = []string{"PageInfo"}
 
 func (ec *executionContext) _PageInfo(ctx context.Context, sel ast.SelectionSet, obj *model.PageInfo) graphql.Marshaler {
@@ -6708,7 +6438,7 @@ func (ec *executionContext) _Queries(ctx context.Context, sel ast.SelectionSet) 
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("Queries")
-		case "me":
+		case "myInfo":
 			field := field
 
 			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
@@ -6717,7 +6447,10 @@ func (ec *executionContext) _Queries(ctx context.Context, sel ast.SelectionSet) 
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
-				res = ec._Queries_me(ctx, field)
+				res = ec._Queries_myInfo(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
 				return res
 			}
 
@@ -6738,52 +6471,6 @@ func (ec *executionContext) _Queries(ctx context.Context, sel ast.SelectionSet) 
 					}
 				}()
 				res = ec._Queries_roles(ctx, field)
-				if res == graphql.Null {
-					atomic.AddUint32(&invalids, 1)
-				}
-				return res
-			}
-
-			rrm := func(ctx context.Context) graphql.Marshaler {
-				return ec.OperationContext.RootResolverMiddleware(ctx, innerFunc)
-			}
-
-			out.Concurrently(i, func() graphql.Marshaler {
-				return rrm(innerCtx)
-			})
-		case "GetCurrentSession":
-			field := field
-
-			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Queries_GetCurrentSession(ctx, field)
-				if res == graphql.Null {
-					atomic.AddUint32(&invalids, 1)
-				}
-				return res
-			}
-
-			rrm := func(ctx context.Context) graphql.Marshaler {
-				return ec.OperationContext.RootResolverMiddleware(ctx, innerFunc)
-			}
-
-			out.Concurrently(i, func() graphql.Marshaler {
-				return rrm(innerCtx)
-			})
-		case "GetMySessions":
-			field := field
-
-			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Queries_GetMySessions(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&invalids, 1)
 				}
@@ -7067,6 +6754,26 @@ func (ec *executionContext) _User(ctx context.Context, sel ast.SelectionSet, obj
 					}
 				}()
 				res = ec._User_picture(ctx, field, obj)
+				return res
+			}
+
+			out.Concurrently(i, func() graphql.Marshaler {
+				return innerFunc(ctx)
+
+			})
+		case "sessions":
+			field := field
+
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._User_sessions(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
 				return res
 			}
 
@@ -7550,50 +7257,6 @@ func (ec *executionContext) marshalNImage2githubᚗcomᚋthanishsidᚋgoserver�
 	return ec._Image(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNImage2ᚕᚖgithubᚗcomᚋthanishsidᚋgoserverᚋdomainᚐImageᚄ(ctx context.Context, sel ast.SelectionSet, v []*domain.Image) graphql.Marshaler {
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalNImage2ᚖgithubᚗcomᚋthanishsidᚋgoserverᚋdomainᚐImage(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
-
-	for _, e := range ret {
-		if e == graphql.Null {
-			return graphql.Null
-		}
-	}
-
-	return ret
-}
-
 func (ec *executionContext) marshalNImage2ᚖgithubᚗcomᚋthanishsidᚋgoserverᚋdomainᚐImage(ctx context.Context, sel ast.SelectionSet, v *domain.Image) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -7602,60 +7265,6 @@ func (ec *executionContext) marshalNImage2ᚖgithubᚗcomᚋthanishsidᚋgoserve
 		return graphql.Null
 	}
 	return ec._Image(ctx, sel, v)
-}
-
-func (ec *executionContext) marshalNImageEdge2ᚕᚖgithubᚗcomᚋthanishsidᚋgoserverᚋgraphqlᚋmodelᚐImageEdgeᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.ImageEdge) graphql.Marshaler {
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalNImageEdge2ᚖgithubᚗcomᚋthanishsidᚋgoserverᚋgraphqlᚋmodelᚐImageEdge(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
-
-	for _, e := range ret {
-		if e == graphql.Null {
-			return graphql.Null
-		}
-	}
-
-	return ret
-}
-
-func (ec *executionContext) marshalNImageEdge2ᚖgithubᚗcomᚋthanishsidᚋgoserverᚋgraphqlᚋmodelᚐImageEdge(ctx context.Context, sel ast.SelectionSet, v *model.ImageEdge) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
-		}
-		return graphql.Null
-	}
-	return ec._ImageEdge(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNMessage2githubᚗcomᚋthanishsidᚋgoserverᚋgraphqlᚋmodelᚐMessage(ctx context.Context, sel ast.SelectionSet, v model.Message) graphql.Marshaler {
@@ -7670,6 +7279,20 @@ func (ec *executionContext) marshalNMessage2ᚖgithubᚗcomᚋthanishsidᚋgoser
 		return graphql.Null
 	}
 	return ec._Message(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNMyInfo2githubᚗcomᚋthanishsidᚋgoserverᚋgraphqlᚋmodelᚐMyInfo(ctx context.Context, sel ast.SelectionSet, v model.MyInfo) graphql.Marshaler {
+	return ec._MyInfo(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNMyInfo2ᚖgithubᚗcomᚋthanishsidᚋgoserverᚋgraphqlᚋmodelᚐMyInfo(ctx context.Context, sel ast.SelectionSet, v *model.MyInfo) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._MyInfo(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNPageInfo2ᚖgithubᚗcomᚋthanishsidᚋgoserverᚋgraphqlᚋmodelᚐPageInfo(ctx context.Context, sel ast.SelectionSet, v *model.PageInfo) graphql.Marshaler {
@@ -7734,10 +7357,6 @@ func (ec *executionContext) marshalNRole2ᚖgithubᚗcomᚋthanishsidᚋgoserver
 		return graphql.Null
 	}
 	return ec._Role(ctx, sel, v)
-}
-
-func (ec *executionContext) marshalNSession2githubᚗcomᚋthanishsidᚋgoserverᚋdomainᚐSession(ctx context.Context, sel ast.SelectionSet, v domain.Session) graphql.Marshaler {
-	return ec._Session(ctx, sel, &v)
 }
 
 func (ec *executionContext) marshalNSession2ᚕᚖgithubᚗcomᚋthanishsidᚋgoserverᚋdomainᚐSessionᚄ(ctx context.Context, sel ast.SelectionSet, v []*domain.Session) graphql.Marshaler {
@@ -8366,13 +7985,6 @@ func (ec *executionContext) marshalOTime2ᚖtimeᚐTime(ctx context.Context, sel
 	}
 	res := graphql.MarshalTime(*v)
 	return res
-}
-
-func (ec *executionContext) marshalOUser2ᚖgithubᚗcomᚋthanishsidᚋgoserverᚋdomainᚐUser(ctx context.Context, sel ast.SelectionSet, v *domain.User) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	return ec._User(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalO__EnumValue2ᚕgithubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐEnumValueᚄ(ctx context.Context, sel ast.SelectionSet, v []introspection.EnumValue) graphql.Marshaler {

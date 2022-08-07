@@ -30,13 +30,12 @@ type ImageService interface {
 }
 
 type Image struct {
-	ID           uuid.UUID     `json:"id"`
-	Title        null.String   `json:"title"`
-	Link         string        `json:"link"`
-	FileHash     []byte        `json:"-"`
-	CreatedAt    time.Time     `json:"createdAt"`
-	UpdatedAt    time.Time     `json:"updatedAt"`
-	linkedUserID uuid.NullUUID `json:"-"`
+	ID        uuid.UUID   `json:"id"`
+	Title     null.String `json:"title"`
+	Link      string      `json:"link"`
+	FileHash  []byte      `json:"-"`
+	CreatedAt time.Time   `json:"createdAt"`
+	UpdatedAt time.Time   `json:"updatedAt"`
 }
 
 type VideoService interface {

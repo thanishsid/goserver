@@ -20,7 +20,12 @@ var AllRoles []Role = []Role{
 	RoleClient,
 }
 
-// Validate role.
+// Get string value of role.
+func (r Role) String() string {
+	return string(r)
+}
+
+// Validate default roles excluding internal roles.
 func (r Role) ValidateRole() error {
 	switch r {
 	case RoleAdministrator, RoleManager, RoleEditor, RoleClient:

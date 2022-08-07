@@ -7,6 +7,10 @@ import (
 	"github.com/jackc/pgx/v4/pgxpool"
 )
 
+//go:generate moq -out db_moq_test.go . DB
+//go:generate moq -out querier_moq_test.go . Querier
+//go:generate moq -out transactioner_moq_test.go . Transactioner
+
 func NewDB(pg *pgxpool.Pool) DB {
 	if pg == nil {
 		panic("postgres connection pool is null")

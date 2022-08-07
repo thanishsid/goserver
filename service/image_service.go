@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"time"
 
@@ -16,20 +15,14 @@ import (
 	"github.com/thanishsid/goserver/infrastructure/db"
 )
 
-func NewImageService(dbs db.DB) domain.ImageService {
-	return &imageService{
-		DB: dbs,
-	}
-}
-
-type imageService struct {
+type Image struct {
 	DB db.DB
 }
 
-var _ domain.ImageService = (*imageService)(nil)
+var _ domain.ImageService = (*Image)(nil)
 
 // Reads the image data from a reader and saves it and then returns image object
-func (i *imageService) Save(ctx context.Context, input domain.ImageUploadInput) (image *domain.Image, err error) {
+func (i *Image) Save(ctx context.Context, input domain.ImageUploadInput) (image *domain.Image, err error) {
 
 	// create a random uuid to use as image filename and the id for database entry.
 	imageID := uuid.New()
@@ -39,7 +32,7 @@ func (i *imageService) Save(ctx context.Context, input domain.ImageUploadInput) 
 	}
 
 	// Read the image bytes from multipart form.
-	imgBytes, err := ioutil.ReadAll(input.File)
+	imgBytes, err := io.ReadAll(input.File)
 	if err != nil {
 		return nil, err
 	}
@@ -67,10 +60,10 @@ func (i *imageService) Save(ctx context.Context, input domain.ImageUploadInput) 
 
 	// Create a new file to store the image.
 	dst, err := os.Create(getImagePath(imageID))
-	defer dst.Close()
 	if err != nil {
 		return nil, err
 	}
+	defer dst.Close()
 
 	// write image data to the file.
 	_, err = dst.Write(imgBytes)
@@ -104,7 +97,7 @@ func (i *imageService) Save(ctx context.Context, input domain.ImageUploadInput) 
 }
 
 // Update the image
-func (i *imageService) Update(ctx context.Context, input domain.ImageUpdateInput) error {
+func (i *Image) Update(ctx context.Context, input domain.ImageUpdateInput) error {
 	if err := input.Validate(); err != nil {
 		return err
 	}
@@ -136,10 +129,10 @@ func (i *imageService) Update(ctx context.Context, input domain.ImageUpdateInput
 	if hashChanged {
 		// Open the existing image file from disk.
 		existingFile, err := os.OpenFile(getImagePath(input.ID), os.O_RDWR, 0666)
-		defer existingFile.Close()
 		if err != nil {
 			return err
 		}
+		defer existingFile.Close()
 
 		// Truncate the image file size to 0.
 		if err := existingFile.Truncate(0); err != nil {
@@ -158,13 +151,7 @@ func (i *imageService) Update(ctx context.Context, input domain.ImageUpdateInput
 		}
 	}
 
-	updateParams := db.InsertOrUpdateImageParams{
-		ID:        dbImage.ID,
-		Title:     dbImage.Title,
-		FileHash:  dbImage.FileHash,
-		CreatedAt: dbImage.CreatedAt,
-		UpdatedAt: dbImage.UpdatedAt,
-	}
+	updateParams := db.InsertOrUpdateImageParams(dbImage)
 
 	titleChanged := dbImage.Title != input.Title
 
@@ -186,7 +173,7 @@ func (i *imageService) Update(ctx context.Context, input domain.ImageUpdateInput
 }
 
 // Delete an image
-func (i *imageService) Delete(ctx context.Context, id uuid.UUID) error {
+func (i *Image) Delete(ctx context.Context, id uuid.UUID) error {
 	if err := os.Remove(getImagePath(id)); err != nil {
 		return err
 	}
@@ -195,7 +182,7 @@ func (i *imageService) Delete(ctx context.Context, id uuid.UUID) error {
 }
 
 // Get an image.
-func (i *imageService) One(ctx context.Context, id uuid.UUID) (*domain.Image, error) {
+func (i *Image) One(ctx context.Context, id uuid.UUID) (*domain.Image, error) {
 	dbImage, err := i.DB.GetImageById(ctx, id)
 	if err != nil {
 		return nil, err
@@ -212,7 +199,7 @@ func (i *imageService) One(ctx context.Context, id uuid.UUID) (*domain.Image, er
 }
 
 // Get all images in a set of ids.
-func (i *imageService) AllByIDS(ctx context.Context, ids ...uuid.UUID) ([]*domain.Image, error) {
+func (i *Image) AllByIDS(ctx context.Context, ids ...uuid.UUID) ([]*domain.Image, error) {
 	imageRows, err := i.DB.GetAllImagesInIDS(ctx, ids)
 	if err != nil {
 		return nil, err

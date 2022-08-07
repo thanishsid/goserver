@@ -17,6 +17,9 @@ type UserService interface {
 	// Parses the user information in the registration token and creates the new user.
 	CompleteRegistration(ctx context.Context, input CompleteRegistrationInput) (*User, error)
 
+	// Create a new user outside of the registration process.
+	Create(ctx context.Context, input CreateUserInput) (*User, error)
+
 	// Update a user.
 	Update(ctx context.Context, userID uuid.UUID, input UserUpdateInput) error
 
@@ -29,14 +32,14 @@ type UserService interface {
 	// Find a user by id.
 	One(ctx context.Context, id uuid.UUID) (*User, error)
 
+	// Find a user by email.
+	OneByEmail(ctx context.Context, email string) (*User, error)
+
 	// Find many users with specific filters.
 	Many(ctx context.Context, filter UserFilterInput) (*ListData[User], error)
 
 	// Find all users in a set ids.
 	AllByIDS(ctx context.Context, ids ...uuid.UUID) ([]*User, error)
-
-	// Verify provided credentials and return the user.
-	VerifyCredentials(ctx context.Context, input VerifyCredentialsInput) (*User, error)
 }
 
 type User struct {
@@ -44,7 +47,7 @@ type User struct {
 	Email        string        `json:"email"`
 	Username     string        `json:"username"`
 	FullName     string        `json:"fullName"`
-	PasswordHash string        `json:"-"`
+	PasswordHash null.String   `json:"-"`
 	Role         Role          `json:"role"`
 	PictureID    uuid.NullUUID `json:"-"`
 	CreatedAt    time.Time     `json:"createdAt"`
@@ -52,7 +55,12 @@ type User struct {
 	DeletedAt    null.Time     `json:"deletedAt"`
 }
 
-//*----------- USER FORMS ---------------
+// Check if the userID is the owner of the user object.
+func (u *User) IsOwner(userID uuid.UUID) bool {
+	return u.ID == userID
+}
+
+//----------- USER FORMS ---------------
 
 // Registration initialization input.
 type InitRegistrationInput struct {
@@ -64,9 +72,9 @@ type InitRegistrationInput struct {
 
 func (f InitRegistrationInput) Validate() error {
 	return vd.ValidateStruct(&f,
-		vd.Field(&f.Email, vd.Required, is.Email),
+		vd.Field(&f.Email, vd.Required, IsEmail),
 		vd.Field(&f.FullName, vd.Required),
-		vd.Field(&f.Role),
+		vd.Field(&f.Role, IsRole),
 		vd.Field(&f.ClientRegistrationLink, vd.Required, is.URL),
 	)
 }
@@ -84,6 +92,24 @@ func (f CompleteRegistrationInput) Validate() error {
 		vd.Field(&f.Token, vd.Required),
 		vd.Field(&f.Username, vd.Required),
 		vd.Field(&f.Password, vd.Required),
+	)
+}
+
+type CreateUserInput struct {
+	Username  string        `json:"username"`
+	Email     string        `json:"email"`
+	FullName  string        `json:"fullName"`
+	Role      Role          `json:"role"`
+	PictureID uuid.NullUUID `json:"pictureId"`
+	Password  null.String   `json:"password"`
+}
+
+func (i CreateUserInput) Validate() error {
+	return vd.ValidateStruct(&i,
+		vd.Field(&i.Username, vd.Required),
+		vd.Field(&i.Email, vd.Required, IsEmail),
+		vd.Field(&i.FullName, vd.Required),
+		vd.Field(&i.Role, IsRole),
 	)
 }
 
@@ -110,9 +136,7 @@ type RoleChangeInput struct {
 func (f RoleChangeInput) Validate() error {
 	return vd.ValidateStruct(&f,
 		vd.Field(&f.UserID, is.UUIDv4),
-		vd.Field(&f.Role, vd.By(func(_ interface{}) error {
-			return f.Role.ValidateRole()
-		})),
+		vd.Field(&f.Role, IsRole),
 	)
 }
 
@@ -130,17 +154,5 @@ func (f UserFilterInput) Validate() error {
 			role := Role(f.Role.ValueOrZero())
 			return role.ValidateRole()
 		}))),
-	)
-}
-
-type VerifyCredentialsInput struct {
-	Email    string `json:"string"`
-	Password string `json:"password"`
-}
-
-func (i VerifyCredentialsInput) Validate() error {
-	return vd.ValidateStruct(&i,
-		vd.Field(&i.Email, vd.Required, is.Email),
-		vd.Field(&i.Password, vd.Required),
 	)
 }

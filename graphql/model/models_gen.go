@@ -13,19 +13,13 @@ type CompleteRegistrationInput struct {
 	PictureID *string `json:"pictureId"`
 }
 
-type ImageCollection struct {
-	Nodes    []*domain.Image `json:"nodes"`
-	Edges    []*ImageEdge    `json:"edges"`
-	PageInfo *PageInfo       `json:"pageInfo"`
-}
-
-type ImageEdge struct {
-	Cursor string        `json:"cursor"`
-	Node   *domain.Image `json:"node"`
-}
-
 type Message struct {
 	Message string `json:"message"`
+}
+
+type MyInfo struct {
+	Account *domain.User    `json:"account"`
+	Session *domain.Session `json:"session"`
 }
 
 type PageInfo struct {

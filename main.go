@@ -3,13 +3,15 @@ package main
 import (
 	"context"
 	"crypto/tls"
-	"embed"
 	"log"
 	"net/http"
 	"time"
 
 	"github.com/jackc/pgx/v4/pgxpool"
+	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/google"
 
+	"github.com/thanishsid/goserver/assets"
 	"github.com/thanishsid/goserver/config"
 	"github.com/thanishsid/goserver/graphql"
 	"github.com/thanishsid/goserver/setup"
@@ -20,9 +22,6 @@ import (
 	"github.com/thanishsid/goserver/infrastructure/tokenizer"
 	"github.com/thanishsid/goserver/service"
 )
-
-//go:embed assets sql/migrations
-var assets embed.FS
 
 func main() {
 	// Read configs.
@@ -35,14 +34,15 @@ func main() {
 	}
 
 	// Run postgresql database migrations from sql files in the embedded file system.
-	if err := db.Migrate(assets, "sql/migrations"); err != nil {
+	if err := db.Migrate(assets.Files, "sql/migrations"); err != nil {
 		panic(err)
 	}
 
+	// Initialize database.
 	database := db.NewDB(pgpool)
 
+	// Seed the database with default values.
 	seeder := setup.NewSeeder(database)
-
 	if err := seeder.UpdateRoles(context.Background()); err != nil {
 		panic(err)
 	}
@@ -63,25 +63,48 @@ func main() {
 	mailClient, err := mailer.NewMailer(mailer.MailerConfig{
 		DialerTimeout:   time.Second * 15,
 		DialerTLSConfig: &tls.Config{InsecureSkipVerify: config.C.Environment != "production"},
-		TemplateStore:   assets,
-		TemplatePaths:   []string{"assets/mail-templates/*.html"},
+		TemplateStore:   assets.Files,
+		TemplatePaths:   []string{"mail-templates/*.html"},
 	})
 	if err != nil {
 		panic(err)
 	}
 
 	// Create all services.
-	userService := service.NewUserService(tokenClient, mailClient, database)
-	imageService := service.NewImageService(database)
-	sessionService := service.NewSessionService(sessiondb)
+	imageService := &service.Image{DB: database}
+
+	sessionService := &service.Session{CacheStore: sessiondb}
+
+	userService := &service.User{
+		Tokens:         tokenClient,
+		Mail:           mailClient,
+		DB:             database,
+		SessionService: sessionService,
+	}
+
+	authService := &service.Auth{
+		UserService:    userService,
+		SessionService: sessionService,
+		GoogleConfig: &oauth2.Config{
+			ClientID:     config.C.GoogleOauthClientID,
+			ClientSecret: config.C.GoogleOauthClientSecret,
+			Endpoint:     google.Endpoint,
+			RedirectURL:  config.C.GoogleOauthRedirectURL,
+			Scopes: []string{
+				"https://www.googleapis.com/auth/userinfo.email",
+				"https://www.googleapis.com/auth/userinfo.profile",
+			},
+		},
+	}
 
 	// Create new server.
-	srv := graphql.NewServer(graphql.ServerDeps{
+	server := graphql.NewServer(graphql.ServerDeps{
 		UserService:    userService,
 		ImageService:   imageService,
 		SessionService: sessionService,
+		AuthService:    authService,
 	})
 
 	// Run server.
-	log.Fatal(http.ListenAndServe(":"+config.C.ServerPort, srv))
+	log.Fatal(http.ListenAndServe(":"+config.C.ServerPort, server))
 }

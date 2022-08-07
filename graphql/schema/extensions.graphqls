@@ -20,4 +20,13 @@ directive @goTag(
 ) on INPUT_FIELD_DEFINITION | FIELD_DEFINITION
 
 # Custom Directives
-directive @enforceAction(action: String!) on FIELD_DEFINITION
+
+directive @authenticated on FIELD_DEFINITION
+
+directive @unauthenticated on FIELD_DEFINITION
+
+directive @authorize(
+	roles: String
+	allowOwner: Boolean
+	mustOwn: Boolean
+) on FIELD_DEFINITION

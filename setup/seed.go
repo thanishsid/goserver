@@ -2,11 +2,12 @@ package setup
 
 import (
 	"context"
-	"strings"
 
 	"github.com/jackc/pgx/v4"
 	"github.com/thanishsid/goserver/domain"
 	"github.com/thanishsid/goserver/infrastructure/db"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 func NewSeeder(dbs db.DB) Seeder {
@@ -34,10 +35,12 @@ func (s *seeder) UpdateRoles(ctx context.Context) error {
 	}
 	defer tx.Rollback(ctx)
 
+	caser := cases.Title(language.English)
+
 	for _, role := range domain.AllRoles {
 		if err := tx.InsertOrUpdateRoles(ctx, db.InsertOrUpdateRolesParams{
 			ID:   string(role),
-			Name: strings.Title(string(role)),
+			Name: caser.String(role.String()),
 		}); err != nil {
 			return err
 		}

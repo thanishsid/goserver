@@ -13,7 +13,6 @@ import (
 	"github.com/thanishsid/goserver/graphql/dataloader"
 	"github.com/thanishsid/goserver/graphql/generated"
 	"github.com/thanishsid/goserver/graphql/model"
-	"github.com/thanishsid/goserver/infrastructure/security"
 	null "gopkg.in/guregu/null.v4"
 )
 
@@ -68,12 +67,12 @@ func (r *mutationsResolver) CompleteRegistration(ctx context.Context, input mode
 
 // UpdateProfile is the resolver for the UpdateProfile field.
 func (r *mutationsResolver) UpdateProfile(ctx context.Context, input model.UpdateProfileInput) (*model.Message, error) {
-	user, err := security.GetUserFromCtx(ctx)
+	session, err := domain.SessionFor(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := r.UserService.Update(ctx, user.ID, domain.UserUpdateInput{
+	if err := r.UserService.Update(ctx, session.UserID, domain.UserUpdateInput{
 		Username:  input.Username,
 		FullName:  input.FullName,
 		PictureID: UUIDFromPtr(input.PictureID),
@@ -88,12 +87,12 @@ func (r *mutationsResolver) UpdateProfile(ctx context.Context, input model.Updat
 
 // DeleteOwnAccount is the resolver for the DeleteOwnAccount field.
 func (r *mutationsResolver) DeleteOwnAccount(ctx context.Context) (*model.Message, error) {
-	user, err := security.GetUserFromCtx(ctx)
+	session, err := domain.SessionFor(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := r.UserService.Delete(ctx, user.ID); err != nil {
+	if err := r.UserService.Delete(ctx, session.UserID); err != nil {
 		return nil, err
 	}
 
@@ -191,6 +190,16 @@ func (r *userResolver) Picture(ctx context.Context, obj *domain.User) (*domain.I
 	}
 
 	return nil, nil
+}
+
+// Sessions is the resolver for the sessions field.
+func (r *userResolver) Sessions(ctx context.Context, obj *domain.User) ([]*domain.Session, error) {
+	sessions, err := r.SessionService.GetAllByUserID(ctx, obj.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	return sessions, nil
 }
 
 // DeletedAt is the resolver for the deletedAt field.

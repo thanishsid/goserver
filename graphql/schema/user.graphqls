@@ -5,6 +5,10 @@ type User @goModel(model: "github.com/thanishsid/goserver/domain.User") {
 	fullName: String!
 	role: String!
 	picture: Image @goField(forceResolver: true)
+	sessions: [Session!]!
+		@goField(forceResolver: true)
+		@authenticated
+		@authorize(roles: "admin,manager", allowOwner: true)
 	createdAt: Time!
 	updatedAt: Time!
 	deletedAt: Time
@@ -51,28 +55,29 @@ input UpdateProfileInput {
 # User Mutations
 extend type Mutations {
 	StartAccountRegistration(input: StartRegistrationInput!): Message!
-		@enforceAction(action: "register_account")
+		@unauthenticated
 
 	StartAccountCreation(input: StartUserCreationInput!): Message!
-		@enforceAction(action: "create_account")
+		@authenticated
+		@authorize(roles: "admin")
 
 	CompleteRegistration(input: CompleteRegistrationInput!): Message!
-		@enforceAction(action: "register_account")
+		@unauthenticated
 
-	UpdateProfile(input: UpdateProfileInput!): Message!
-		@enforceAction(action: "update_account")
+	UpdateProfile(input: UpdateProfileInput!): Message! @authenticated
 
-	DeleteOwnAccount: Message! @enforceAction(action: "delete_own_account")
+	DeleteOwnAccount: Message! @authenticated
 
 	DeleteAnotherAccount(id: ID!): Message!
-		@enforceAction(action: "delete_another_account")
+		@authenticated
+		@authorize(roles: "admin")
 
-	RecoverAccount(id: ID!): Message! @enforceAction(action: "recover_account")
+	RecoverAccount(id: ID!): Message! @authenticated @authorize(roles: "admin")
 }
 
 # User Queries
 extend type Queries {
-	user(id: ID!): User! @enforceAction(action: "view_user")
+	user(id: ID!): User! @authenticated @authorize(roles: "admin,manager")
 
 	users(
 		query: String
@@ -80,5 +85,5 @@ extend type Queries {
 		showDeleted: Boolean
 		limit: Int
 		cursor: String
-	): UserCollection! @enforceAction(action: "view_users")
+	): UserCollection! @authenticated @authorize(roles: "admin,manager")
 }

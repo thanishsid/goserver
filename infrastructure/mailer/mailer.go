@@ -11,6 +11,8 @@ import (
 	gomail "gopkg.in/mail.v2"
 )
 
+//go:generate moq -out mailer_moq_test.go . Mailer
+
 type Mailer interface {
 	SendLinkMail(ctx context.Context, data LinkMailData) error
 }

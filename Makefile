@@ -13,13 +13,13 @@ prune:
 	docker image prune --filter="dangling=true"
 
 gensql:
-	sqlc generate
+	sqlc -f build/sqlc.yaml generate
 
 genmock:
 	./scripts/genmocks.sh
 
 gengql:
-	gqlgen generate
+	gqlgen --config build/gqlgen.yaml generate
 
 dev:
 	./scripts/dev.sh

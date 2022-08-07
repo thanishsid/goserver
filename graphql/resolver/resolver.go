@@ -12,4 +12,5 @@ type Resolver struct {
 	UserService    domain.UserService
 	ImageService   domain.ImageService
 	SessionService domain.SessionService
+	AuthService    domain.AuthService
 }

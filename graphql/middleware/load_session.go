@@ -1,4 +1,4 @@
-package graphql
+package middleware
 
 import (
 	"context"
@@ -28,10 +28,7 @@ func LoadSessionMiddleware(sessionSvc domain.SessionService) func(next http.Hand
 
 				// If session is not found in the cache then the session cookie is removed and next handler is invoked.
 				if err == service.ErrNotFound {
-					cookieMgr, err := cookiemanager.For(r.Context())
-					if err == nil {
-						cookieMgr.RemoveCookie(config.SESSION_COOKIE_NAME)
-					}
+					cookiemanager.For(r.Context()).RemoveCookie(config.SESSION_COOKIE_NAME)
 				}
 
 				next.ServeHTTP(w, r)

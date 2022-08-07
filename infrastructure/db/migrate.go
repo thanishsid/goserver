@@ -13,10 +13,10 @@ import (
 // Runs database migrations.
 func Migrate(fileSys fs.FS, path string) error {
 	db, err := sql.Open("pgx", config.C.PostgresSource)
-	defer db.Close()
 	if err != nil {
 		return err
 	}
+	defer db.Close()
 
 	goose.SetBaseFS(fileSys)
 

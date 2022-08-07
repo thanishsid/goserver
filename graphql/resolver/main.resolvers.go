@@ -5,13 +5,13 @@ package resolver
 
 import (
 	"context"
-	"strings"
 
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/thanishsid/goserver/domain"
 	"github.com/thanishsid/goserver/graphql/generated"
 	"github.com/thanishsid/goserver/graphql/model"
-	"github.com/thanishsid/goserver/infrastructure/security"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 	null "gopkg.in/guregu/null.v4"
 )
 
@@ -29,24 +29,28 @@ func (r *mutationsResolver) UploadImage(ctx context.Context, file graphql.Upload
 	return image, nil
 }
 
-// Me is the resolver for the me field.
-func (r *queriesResolver) Me(ctx context.Context) (*domain.User, error) {
-	user, err := security.GetUserFromCtx(ctx)
+// MyInfo is the resolver for the myInfo field.
+func (r *queriesResolver) MyInfo(ctx context.Context) (*model.MyInfo, error) {
+	session, err := domain.SessionFor(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	return user, nil
+	return &model.MyInfo{
+		Session: session,
+	}, nil
 }
 
 // Roles is the resolver for the roles field.
 func (r *queriesResolver) Roles(ctx context.Context) ([]*model.Role, error) {
 	roles := make([]*model.Role, len(domain.AllRoles))
 
+	caser := cases.Title(language.English)
+
 	for i, role := range domain.AllRoles {
 		roles[i] = &model.Role{
 			ID:   string(role),
-			Name: strings.Title(string(role)),
+			Name: caser.String(role.String()),
 		}
 	}
 

@@ -19,24 +19,17 @@ import (
 	"github.com/thanishsid/goserver/infrastructure/tokenizer"
 )
 
-func NewUserService(token tokenizer.Tokenizer, mail mailer.Mailer, dbs db.DB) domain.UserService {
-	return &userService{
-		Tokens: token,
-		Mail:   mail,
-		DB:     dbs,
-	}
+type User struct {
+	Tokens         tokenizer.Tokenizer
+	Mail           mailer.Mailer
+	DB             db.DB
+	SessionService domain.SessionService
 }
 
-type userService struct {
-	Tokens tokenizer.Tokenizer
-	Mail   mailer.Mailer
-	DB     db.DB
-}
-
-var _ domain.UserService = (*userService)(nil)
+var _ domain.UserService = (*User)(nil)
 
 // Sends an email to the user with a link that contains a JWE token containing information about the user.
-func (u *userService) InitRegistration(ctx context.Context, input domain.InitRegistrationInput) error {
+func (u *User) InitRegistration(ctx context.Context, input domain.InitRegistrationInput) error {
 	if err := input.Validate(); err != nil {
 		return err
 	}
@@ -73,7 +66,7 @@ func (u *userService) InitRegistration(ctx context.Context, input domain.InitReg
 }
 
 // Parses the user information in the registration token and creates the new user.
-func (u *userService) CompleteRegistration(ctx context.Context, input domain.CompleteRegistrationInput) (*domain.User, error) {
+func (u *User) CompleteRegistration(ctx context.Context, input domain.CompleteRegistrationInput) (*domain.User, error) {
 	if err := input.Validate(); err != nil {
 		return nil, err
 	}
@@ -98,7 +91,7 @@ func (u *userService) CompleteRegistration(ctx context.Context, input domain.Com
 		Email:        claims.Email,
 		FullName:     claims.FullName,
 		Role:         string(claims.Role),
-		PasswordHash: string(passwordHash),
+		PasswordHash: null.StringFrom(string(passwordHash)),
 		PictureID:    input.PictureID,
 		CreatedAt:    now,
 		UpdatedAt:    now,
@@ -112,7 +105,7 @@ func (u *userService) CompleteRegistration(ctx context.Context, input domain.Com
 		Username:     input.Username,
 		FullName:     claims.FullName,
 		Role:         claims.Role,
-		PasswordHash: string(passwordHash),
+		PasswordHash: null.StringFrom(string(passwordHash)),
 		PictureID:    input.PictureID,
 		CreatedAt:    now,
 		UpdatedAt:    now,
@@ -121,8 +114,54 @@ func (u *userService) CompleteRegistration(ctx context.Context, input domain.Com
 	return &user, nil
 }
 
+// Create a new user outside of the registration process.
+func (u *User) Create(ctx context.Context, input domain.CreateUserInput) (*domain.User, error) {
+	if err := input.Validate(); err != nil {
+		return nil, err
+	}
+
+	userID := uuid.New()
+	now := time.Now()
+
+	var passwordHash null.String
+
+	if input.Password.Valid {
+		hash, err := bcrypt.GenerateFromPassword([]byte(input.Password.ValueOrZero()), bcrypt.DefaultCost)
+		if err != nil {
+			return nil, err
+		}
+		passwordHash = null.StringFrom(string(hash))
+	}
+
+	if err := u.DB.InsertOrUpdateUser(ctx, db.InsertOrUpdateUserParams{
+		ID:           userID,
+		Username:     input.Username,
+		Email:        input.Email,
+		FullName:     input.FullName,
+		Role:         input.Role.String(),
+		PasswordHash: passwordHash,
+		PictureID:    input.PictureID,
+		CreatedAt:    now,
+		UpdatedAt:    now,
+	}); err != nil {
+		return nil, err
+	}
+
+	return &domain.User{
+		ID:           userID,
+		Email:        input.Email,
+		Username:     input.Username,
+		FullName:     input.FullName,
+		PasswordHash: passwordHash,
+		Role:         input.Role,
+		PictureID:    input.PictureID,
+		CreatedAt:    now,
+		UpdatedAt:    now,
+	}, nil
+}
+
 // Update a user.
-func (u *userService) Update(ctx context.Context, userID uuid.UUID, input domain.UserUpdateInput) error {
+func (u *User) Update(ctx context.Context, userID uuid.UUID, input domain.UserUpdateInput) error {
 
 	if err := input.Validate(); err != nil {
 		return err
@@ -161,7 +200,7 @@ func (u *userService) Update(ctx context.Context, userID uuid.UUID, input domain
 }
 
 // Change user role.
-func (u *userService) ChangeRole(ctx context.Context, input domain.RoleChangeInput) error {
+func (u *User) ChangeRole(ctx context.Context, input domain.RoleChangeInput) error {
 	if err := input.Validate(); err != nil {
 		return err
 	}
@@ -195,11 +234,15 @@ func (u *userService) ChangeRole(ctx context.Context, input domain.RoleChangeInp
 		return err
 	}
 
+	if err := u.SessionService.UpdateRoleByUserID(ctx, user.ID, input.Role); err != nil {
+		return err
+	}
+
 	return tx.Commit(ctx)
 }
 
 // Delete a user by id.
-func (u *userService) Delete(ctx context.Context, id uuid.UUID) error {
+func (u *User) Delete(ctx context.Context, id uuid.UUID) error {
 	user, err := u.DB.GetUserById(ctx, id)
 	if err != nil {
 		if err == pgx.ErrNoRows {
@@ -208,11 +251,15 @@ func (u *userService) Delete(ctx context.Context, id uuid.UUID) error {
 		return err
 	}
 
-	return u.DB.SoftDeleteUser(ctx, user.ID)
+	if err := u.DB.SoftDeleteUser(ctx, user.ID); err != nil {
+		return err
+	}
+
+	return u.SessionService.DeleteAllByUserID(ctx, user.ID)
 }
 
 // Find a user by id.
-func (u *userService) One(ctx context.Context, id uuid.UUID) (*domain.User, error) {
+func (u *User) One(ctx context.Context, id uuid.UUID) (*domain.User, error) {
 	userRow, err := u.DB.GetUserById(ctx, id)
 	if err != nil {
 		if err == pgx.ErrNoRows {
@@ -237,8 +284,34 @@ func (u *userService) One(ctx context.Context, id uuid.UUID) (*domain.User, erro
 	return user, nil
 }
 
+// Find a user by email.
+func (u *User) OneByEmail(ctx context.Context, email string) (*domain.User, error) {
+	userRow, err := u.DB.GetUserByEmail(ctx, email)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return nil, ErrNotFound
+		}
+		return nil, err
+	}
+
+	user := &domain.User{
+		ID:           userRow.ID,
+		Email:        userRow.Email,
+		Username:     userRow.Username,
+		FullName:     userRow.FullName,
+		PasswordHash: userRow.PasswordHash,
+		Role:         domain.Role(userRow.Role),
+		PictureID:    userRow.PictureID,
+		CreatedAt:    userRow.CreatedAt,
+		UpdatedAt:    userRow.UpdatedAt,
+		DeletedAt:    userRow.DeletedAt,
+	}
+
+	return user, nil
+}
+
 // Find users with specific filters and returns a cursor for pagination.
-func (u *userService) Many(ctx context.Context, filter domain.UserFilterInput) (*domain.ListData[domain.User], error) {
+func (u *User) Many(ctx context.Context, filter domain.UserFilterInput) (*domain.ListData[domain.User], error) {
 	var err error
 
 	if err = filter.Validate(); err != nil {
@@ -252,7 +325,7 @@ func (u *userService) Many(ctx context.Context, filter domain.UserFilterInput) (
 	var dbParams db.GetManyUsersParams
 
 	if filter.Cursor.Valid {
-		dbParams, err = DecodeCursor[db.GetManyUsersParams](filter.Cursor.ValueOrZero())
+		dbParams, err = decodeCursor[db.GetManyUsersParams](filter.Cursor.ValueOrZero())
 		if err != nil {
 			return nil, err
 		}
@@ -303,7 +376,7 @@ func (u *userService) Many(ctx context.Context, filter domain.UserFilterInput) (
 		// create a s
 		cursorDbParams := dbParams
 		cursorDbParams.UpdatedBefore = null.TimeFrom(user.UpdatedAt)
-		cursor, err := EncodeCursor(cursorDbParams)
+		cursor, err := encodeCursor(cursorDbParams)
 		if err != nil {
 			return nil, err
 		}
@@ -324,7 +397,7 @@ func (u *userService) Many(ctx context.Context, filter domain.UserFilterInput) (
 }
 
 // Find all users in a set ids.
-func (u *userService) AllByIDS(ctx context.Context, ids ...uuid.UUID) ([]*domain.User, error) {
+func (u *User) AllByIDS(ctx context.Context, ids ...uuid.UUID) ([]*domain.User, error) {
 
 	userRows, err := u.DB.GetAllUsersInIDS(ctx, ids)
 	if err != nil {
@@ -334,7 +407,6 @@ func (u *userService) AllByIDS(ctx context.Context, ids ...uuid.UUID) ([]*domain
 	users := make([]*domain.User, len(userRows))
 
 	for i, row := range userRows {
-
 		user := domain.User{
 			ID:        row.ID,
 			Email:     row.Email,
@@ -351,37 +423,4 @@ func (u *userService) AllByIDS(ctx context.Context, ids ...uuid.UUID) ([]*domain
 	}
 
 	return users, nil
-}
-
-// Verify provided credentials and return the user.
-func (u *userService) VerifyCredentials(ctx context.Context, input domain.VerifyCredentialsInput) (*domain.User, error) {
-	if err := input.Validate(); err != nil {
-		return nil, err
-	}
-
-	user, err := u.DB.GetUserByEmail(ctx, input.Email)
-	if err != nil {
-		if err == pgx.ErrNoRows {
-			return nil, ErrNotFound
-		}
-
-		return nil, err
-	}
-
-	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(input.Password)); err != nil {
-		return nil, ErrInvalidCredentials
-	}
-
-	return &domain.User{
-		ID:           user.ID,
-		Email:        user.Email,
-		Username:     user.Username,
-		FullName:     user.FullName,
-		PasswordHash: user.PasswordHash,
-		Role:         domain.Role(user.Role),
-		PictureID:    user.PictureID,
-		CreatedAt:    user.CreatedAt,
-		UpdatedAt:    user.UpdatedAt,
-		DeletedAt:    user.DeletedAt,
-	}, nil
 }

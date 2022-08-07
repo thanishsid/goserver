@@ -5,16 +5,11 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"log"
-	"os"
 	"path/filepath"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/thanishsid/goserver/config"
 )
-
-var now = time.Now
 
 // Get file path from image directory in config and the image id.
 func getImagePath(id uuid.UUID) string {
@@ -30,11 +25,13 @@ func generateFileHash(bytes []byte) ([]byte, error) {
 		return nil, fmt.Errorf("failed to generate hash of image, %w", err)
 	}
 
-	return hasher.Sum(nil), nil
+	sum := hasher.Sum(nil)
+
+	return sum, nil
 }
 
 // Encode cursor to json and url safe base64.
-func EncodeCursor(obj any) (string, error) {
+func encodeCursor(obj any) (string, error) {
 	jsn, err := json.Marshal(obj)
 	if err != nil {
 		return "", err
@@ -44,7 +41,7 @@ func EncodeCursor(obj any) (string, error) {
 }
 
 // Decode cursor from url safe bas64 and json to target type.
-func DecodeCursor[T any](cursor string) (T, error) {
+func decodeCursor[T any](cursor string) (T, error) {
 	var obj T
 
 	jsn, err := base64.URLEncoding.DecodeString(cursor)
@@ -57,13 +54,4 @@ func DecodeCursor[T any](cursor string) (T, error) {
 	}
 
 	return obj, nil
-}
-
-// Cleanup, delete image on non nil error.
-func CleanupOnError(err *error, path string) {
-	if *err != nil {
-		if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
-			log.Println("failed to cleanup image")
-		}
-	}
 }

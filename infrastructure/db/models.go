@@ -30,7 +30,7 @@ type User struct {
 	Email        string
 	FullName     string
 	Role         string
-	PasswordHash string
+	PasswordHash null.String
 	PictureID    uuid.NullUUID
 	CreatedAt    time.Time
 	UpdatedAt    time.Time

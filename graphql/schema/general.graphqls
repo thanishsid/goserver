@@ -1,3 +1,11 @@
+type Image @goModel(model: "github.com/thanishsid/goserver/domain.Image") {
+	id: ID!
+	title: String
+	link: String!
+	createdAt: Time!
+	updatedAt: Time!
+}
+
 type PageInfo {
 	startCursor: ID!
 	endCursor: ID!
@@ -11,4 +19,9 @@ type Role {
 
 type Message {
 	message: String!
+}
+
+type MyInfo {
+	account: User! @goField(forceResolver: true)
+	session: Session!
 }

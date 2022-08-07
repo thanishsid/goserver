@@ -11,7 +11,7 @@ CREATE TABLE users (
     email TEXT NOT NULL UNIQUE,
     full_name TEXT NOT NULL,
     role TEXT NOT NULL REFERENCES roles (id),
-    password_hash TEXT NOT NULL,
+    password_hash TEXT,
     picture_id UUID UNIQUE REFERENCES images (id),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),

@@ -12,6 +12,8 @@ import (
 	"gopkg.in/square/go-jose.v2/jwt"
 )
 
+//go:generate moq -out tokenizer_moq_test.go . Tokenizer
+
 var ErrNonPointerClaim = errors.New("invalid claims type, the claims must be a pointer")
 
 type ValidationError = vd.Errors
