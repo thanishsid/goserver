@@ -1,9 +1,7 @@
 package config
 
-type ContextKey string
+import "github.com/thanishsid/goserver/domain"
 
 const (
-	SESSION_KEY        ContextKey = "session"
-	COOKIE_MANAGER_KEY ContextKey = "cookie-manager"
-	USERAGENT_KEY      ContextKey = "user-agent"
+	CTX_USERAGENT_KEY domain.ContextKey = "user-agent"
 )

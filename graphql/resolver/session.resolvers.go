@@ -6,7 +6,6 @@ package resolver
 import (
 	"context"
 
-	"github.com/google/uuid"
 	"github.com/thanishsid/goserver/config"
 	"github.com/thanishsid/goserver/domain"
 	"github.com/thanishsid/goserver/graphql/cookiemanager"
@@ -69,21 +68,6 @@ func (r *mutationsResolver) LogoutFromAllDevices(ctx context.Context) (*model.Me
 	return &model.Message{
 		Message: "logged out from all devices successfully",
 	}, nil
-}
-
-// GetSessionsByUser is the resolver for the GetSessionsByUser field.
-func (r *queriesResolver) GetSessionsByUser(ctx context.Context, id string) ([]*domain.Session, error) {
-	userID, err := uuid.Parse(id)
-	if err != nil {
-		return nil, err
-	}
-
-	sessions, err := r.SessionService.GetAllByUserID(ctx, userID)
-	if err != nil {
-		return nil, err
-	}
-
-	return sessions, nil
 }
 
 // ID is the resolver for the id field.

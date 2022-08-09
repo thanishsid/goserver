@@ -5,10 +5,14 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/thanishsid/goserver/config"
+	"github.com/thanishsid/goserver/domain"
 )
 
-func newCookieManager(config CookieConfig, rw http.ResponseWriter) *CookieManager {
+const (
+	CTX_KEY domain.ContextKey = "cookie-manager"
+)
+
+func NewCookieManager(config CookieConfig, rw http.ResponseWriter) *CookieManager {
 	return &CookieManager{
 		cfg: config,
 		rw:  rw,
@@ -65,22 +69,9 @@ func (c *CookieManager) RemoveCookie(name string) {
 	})
 }
 
-// Middleware to load cookie manager into the context and set any cookies in the cookie stack
-// at the end of the handler chain.
-func LoadManager(cfg CookieConfig) func(next http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			mgr := newCookieManager(cfg, w)
-			ctxWithMgr := context.WithValue(r.Context(), config.COOKIE_MANAGER_KEY, mgr)
-
-			next.ServeHTTP(w, r.WithContext(ctxWithMgr))
-		})
-	}
-}
-
 // Get the cookie manager from context.
 func For(ctx context.Context) *CookieManager {
-	cookieMgr, ok := ctx.Value(config.COOKIE_MANAGER_KEY).(*CookieManager)
+	cookieMgr, ok := ctx.Value(CTX_KEY).(*CookieManager)
 	if !ok {
 		panic("cookie manager not found in context")
 	}

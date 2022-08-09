@@ -26,8 +26,8 @@ func init() {
 }
 
 func getRandRole() domain.Role {
-	randIndex := rand.Intn(len(domain.AllRoles))
-	return domain.AllRoles[randIndex]
+	randIndex := rand.Intn(len(domain.Roles))
+	return domain.Roles[randIndex].ID
 }
 
 func getFakeUser() *domain.User {
@@ -294,7 +294,7 @@ func TestUser_Update(t *testing.T) {
 		Email:        fake.Email(),
 		Username:     fake.Username(),
 		FullName:     fake.Name(),
-		Role:         string(domain.RoleAdministrator),
+		Role:         string(domain.RoleAdmin),
 		PasswordHash: null.StringFrom(fake.Password(true, true, true, true, false, 16)),
 		CreatedAt:    time.Now().Add(-time.Hour),
 		UpdatedAt:    time.Now().Add(-time.Hour),

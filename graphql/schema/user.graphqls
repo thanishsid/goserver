@@ -7,8 +7,7 @@ type User @goModel(model: "github.com/thanishsid/goserver/domain.User") {
 	picture: Image @goField(forceResolver: true)
 	sessions: [Session!]!
 		@goField(forceResolver: true)
-		@authenticated
-		@authorize(roles: "admin,manager", allowOwner: true)
+		@authorize(object: "user", action: "get_sessions")
 	createdAt: Time!
 	updatedAt: Time!
 	deletedAt: Time
@@ -55,29 +54,29 @@ input UpdateProfileInput {
 # User Mutations
 extend type Mutations {
 	StartAccountRegistration(input: StartRegistrationInput!): Message!
-		@unauthenticated
+		@authorize(object: "user", action: "start_registration")
 
 	StartAccountCreation(input: StartUserCreationInput!): Message!
-		@authenticated
-		@authorize(roles: "admin")
+		@authorize(object: "user", action: "start_creation")
 
 	CompleteRegistration(input: CompleteRegistrationInput!): Message!
-		@unauthenticated
+		@authorize(object: "user", action: "complete_registration")
 
-	UpdateProfile(input: UpdateProfileInput!): Message! @authenticated
+	UpdateProfile(input: UpdateProfileInput!): Message!
+		@authorize(object: "user", action: "update_profile")
 
-	DeleteOwnAccount: Message! @authenticated
+	DeleteOwnAccount: Message! @authorize(object: "user", action: "delete_own")
 
 	DeleteAnotherAccount(id: ID!): Message!
-		@authenticated
-		@authorize(roles: "admin")
+		@authorize(object: "user", action: "delete_other")
 
-	RecoverAccount(id: ID!): Message! @authenticated @authorize(roles: "admin")
+	RecoverAccount(id: ID!): Message!
+		@authorize(object: "user", action: "recover")
 }
 
 # User Queries
 extend type Queries {
-	user(id: ID!): User! @authenticated @authorize(roles: "admin,manager")
+	user(id: ID!): User! @authorize(object: "user", action: "get_one")
 
 	users(
 		query: String
@@ -85,5 +84,5 @@ extend type Queries {
 		showDeleted: Boolean
 		limit: Int
 		cursor: String
-	): UserCollection! @authenticated @authorize(roles: "admin,manager")
+	): UserCollection! @authorize(object: "user", action: "get_many")
 }

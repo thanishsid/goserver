@@ -1,17 +1,31 @@
-p, register_account, guest
-p, create_account, admin
-p, update_account, admin|manager|editor|client
-p, delete_own_account, admin|manager|editor|client
-p, delete_another_account, admin
-p, recover_account, admin
+p, guest, user, start_registration
+p, admin, user, start_creation
+p, guest, user, complete_registration
 
-p, view_me, admin|manager|editor|client
-p, login, guest
-p, logout, admin|manager|editor|client
-p, upload_image, any
+p, authenticated, user, update_profile
 
-p, view_user, admin|manager
-p, view_users, admin|manager
-p, view_user_sessions, admin|manager
-p, view_roles, admin
+p, authenticated, user, delete_own
+p, admin, user, delete_other
+p, admin, user, recover
 
+p, authenticated, user, get_my_info
+
+p, guest, session, login
+p, authenticated, session, logout
+p, authenticated, session, logout_all
+
+p, any, image, upload
+
+p, admin_or_manager, user, get_one
+p, admin_or_manager, user, get_many
+p, admin_or_manager, user, get_sessions
+
+p, admin, role, get_all
+
+g, admin, authenticated
+g, manager, authenticated
+g, editor, authenticated
+g, client, authenticated
+
+g, admin, admin_or_manager
+g, manager, admin_or_manager

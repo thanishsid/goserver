@@ -126,7 +126,5 @@ FROM users
 WHERE sqlc.narg('user_ids')::UUID[] IS NULL OR id = ANY(sqlc.narg('user_ids')::UUID[]);
 
 
--- name: GetAdminCount :one
-SELECT COUNT(1) FROM users WHERE id = @id::UUID;
 
 

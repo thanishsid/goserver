@@ -17,7 +17,7 @@ type UserService interface {
 	// Parses the user information in the registration token and creates the new user.
 	CompleteRegistration(ctx context.Context, input CompleteRegistrationInput) (*User, error)
 
-	// Create a new user outside of the registration process.
+	// Create a new user.
 	Create(ctx context.Context, input CreateUserInput) (*User, error)
 
 	// Update a user.

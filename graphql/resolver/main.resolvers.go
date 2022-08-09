@@ -10,8 +10,6 @@ import (
 	"github.com/thanishsid/goserver/domain"
 	"github.com/thanishsid/goserver/graphql/generated"
 	"github.com/thanishsid/goserver/graphql/model"
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
 	null "gopkg.in/guregu/null.v4"
 )
 
@@ -43,14 +41,12 @@ func (r *queriesResolver) MyInfo(ctx context.Context) (*model.MyInfo, error) {
 
 // Roles is the resolver for the roles field.
 func (r *queriesResolver) Roles(ctx context.Context) ([]*model.Role, error) {
-	roles := make([]*model.Role, len(domain.AllRoles))
+	roles := make([]*model.Role, len(domain.Roles))
 
-	caser := cases.Title(language.English)
-
-	for i, role := range domain.AllRoles {
+	for i, role := range domain.Roles {
 		roles[i] = &model.Role{
-			ID:   string(role),
-			Name: caser.String(role.String()),
+			ID:   role.ID.String(),
+			Name: role.Name,
 		}
 	}
 

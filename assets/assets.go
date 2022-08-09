@@ -1,8 +1,10 @@
 package assets
 
-import "embed"
+import (
+	"embed"
+)
 
-//go:embed mail-templates
+//go:embed mail-templates/*.html
 //go:embed sql/migrations
 //go:embed casbin*
 var Files embed.FS

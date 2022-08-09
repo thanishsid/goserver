@@ -5,17 +5,18 @@ go 1.19
 require (
 	github.com/99designs/gqlgen v0.17.13
 	github.com/brianvoe/gofakeit/v6 v6.17.0
+	github.com/casbin/casbin/v2 v2.36.1
 	github.com/davecgh/go-spew v1.1.1
 	github.com/go-chi/chi/v5 v5.0.7
 	github.com/go-ozzo/ozzo-validation/v4 v4.3.0
 	github.com/go-redis/cache/v8 v8.4.3
 	github.com/go-redis/redis/v8 v8.11.5
-	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.3.0
 	github.com/graph-gophers/dataloader v5.0.0+incompatible
 	github.com/jackc/pgconn v1.12.1
 	github.com/jackc/pgx/v4 v4.16.1
 	github.com/joho/godotenv v1.4.0
+	github.com/naucon/casbin-fs-adapter v0.1.0
 	github.com/pressly/goose/v3 v3.6.1
 	github.com/stretchr/testify v1.8.0
 	github.com/vektah/gqlparser/v2 v2.4.6
@@ -27,6 +28,7 @@ require (
 
 require (
 	cloud.google.com/go/compute v1.7.0 // indirect
+	github.com/Knetic/govaluate v3.0.1-0.20171022003610-9aa49832a739+incompatible // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/protobuf v1.28.0 // indirect
@@ -58,7 +60,7 @@ require (
 	golang.org/x/oauth2 v0.0.0-20220722155238-128564f6959c
 	golang.org/x/sync v0.0.0-20220601150217-0de741cfad7f // indirect
 	golang.org/x/sys v0.0.0-20220624220833-87e55d714810 // indirect
-	golang.org/x/text v0.3.7
+	golang.org/x/text v0.3.7 // indirect
 	gopkg.in/alexcesaro/quotedprintable.v3 v3.0.0-20150716171945-2caba252f4dc // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

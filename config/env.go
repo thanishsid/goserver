@@ -7,6 +7,7 @@ import (
 	"github.com/davecgh/go-spew/spew"
 	vd "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/joho/godotenv"
+	"github.com/thanishsid/goserver/domain"
 )
 
 type config struct {
@@ -14,6 +15,8 @@ type config struct {
 
 	PostgresSource     string
 	RedisSessionSource string
+
+	AdminEmail string
 
 	ImageDirectory string
 	ImageProxyLink string
@@ -44,6 +47,8 @@ func (c config) Validate() error {
 		vd.Field(&c.PostgresSource, vd.Required),
 		vd.Field(&c.RedisSessionSource, vd.Required),
 
+		vd.Field(&c.AdminEmail, vd.Required, domain.IsEmail),
+
 		vd.Field(&c.ImageDirectory, vd.Required),
 		vd.Field(&c.ImageProxyLink, vd.Required),
 
@@ -73,10 +78,12 @@ func ReadConfig(files ...string) {
 	}
 
 	C = config{
-		CompanyName: "Golang Corp",
+		CompanyName: os.Getenv("COMPANY_NAME"),
 
 		PostgresSource:     os.Getenv("POSTGRES_SOURCE"),
 		RedisSessionSource: os.Getenv("SESSION_DB_SOURCE"),
+
+		AdminEmail: os.Getenv("ADMIN_EMAIL"),
 
 		ImageDirectory: os.Getenv("IMAGE_DIRECTORY"),
 		ImageProxyLink: os.Getenv("IMGPROXY_LINK"),

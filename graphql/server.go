@@ -11,10 +11,10 @@ import (
 	"github.com/thanishsid/goserver/domain"
 	"github.com/thanishsid/goserver/graphql/cookiemanager"
 	"github.com/thanishsid/goserver/graphql/dataloader"
-	"github.com/thanishsid/goserver/graphql/directive"
 	"github.com/thanishsid/goserver/graphql/generated"
 	"github.com/thanishsid/goserver/graphql/middleware"
 	"github.com/thanishsid/goserver/graphql/resolver"
+	"github.com/thanishsid/goserver/infrastructure/security"
 )
 
 type ServerDeps struct {
@@ -22,6 +22,7 @@ type ServerDeps struct {
 	ImageService   domain.ImageService
 	SessionService domain.SessionService
 	AuthService    domain.AuthService
+	Authorizer     *security.Authorizer
 }
 
 func NewServer(deps ServerDeps) *chi.Mux {
@@ -39,7 +40,7 @@ func NewServer(deps ServerDeps) *chi.Mux {
 	// Load middleware.
 	r.Use(
 		middleware.LoadRequestMetadataMiddleware(),
-		cookiemanager.LoadManager(cookieConfig),
+		middleware.LoadCookieManager(cookieConfig),
 		middleware.LoadSessionMiddleware(deps.SessionService),
 		dataloader.Middleware(dataloader.NewDataloader(deps.UserService, deps.ImageService)),
 	)
@@ -69,9 +70,7 @@ func NewGraphqlHandler(deps ServerDeps) *handler.Server {
 		AuthService:    deps.AuthService,
 	},
 		Directives: generated.DirectiveRoot{
-			Authenticated:   directive.Authenticated,
-			Unauthenticated: directive.Unauthenticated,
-			Authorize:       directive.Authorize,
+			Authorize: deps.Authorizer.AuthorizeDirective,
 		},
 	}
 

@@ -21,12 +21,4 @@ directive @goTag(
 
 # Custom Directives
 
-directive @authenticated on FIELD_DEFINITION
-
-directive @unauthenticated on FIELD_DEFINITION
-
-directive @authorize(
-	roles: String
-	allowOwner: Boolean
-	mustOwn: Boolean
-) on FIELD_DEFINITION
+directive @authorize(object: String!, action: String!) on FIELD_DEFINITION

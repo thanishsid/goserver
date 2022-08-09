@@ -5,11 +5,12 @@ schema {
 }
 
 type Queries {
-	myInfo: MyInfo! @authenticated
+	myInfo: MyInfo! @authorize(object: "user", action: "get_my_info")
 
-	roles: [Role!]! @authorize(roles: "admin,manager")
+	roles: [Role!]! @authorize(object: "role", action: "get_all")
 }
 
 type Mutations {
 	UploadImage(file: Upload!, title: String): Image!
+		@authorize(object: "image", action: "upload")
 }

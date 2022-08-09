@@ -2,12 +2,9 @@ package domain
 
 import (
 	"context"
-	"errors"
-	"strings"
 
 	vd "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/go-ozzo/ozzo-validation/v4/is"
-	"github.com/thanishsid/goserver/config"
 )
 
 type AuthService interface {
@@ -45,36 +42,9 @@ type RedirectLinkInput struct {
 }
 
 func (i RedirectLinkInput) Validate() error {
-	// successParamErr := errors.New("invalid 'success-redirect' param")
-	// failParamErr := errors.New("invalid 'fail-redirect' param")
-
 	return vd.ValidateStruct(&i,
-		vd.Field(&i.SuccessRedirect, vd.Required, is.Base64), // 	vd.By(func(value interface{}) error {
-		// 	var bytes []byte
-		// 	if _, err := base64.URLEncoding.Decode(bytes, []byte(i.SuccessRedirect)); err != nil {
-		// 		return successParamErr
-		// 	}
-
-		// 	if err := vd.Validate(string(bytes), is.URL); err != nil {
-		// 		return successParamErr
-		// 	}
-
-		// 	return nil
-		// }),
-
-		vd.Field(&i.FailRedirect, vd.Required, is.Base64), // 	vd.By(func(value interface{}) error {
-		// 	var bytes []byte
-		// 	if _, err := base64.URLEncoding.Decode(bytes, []byte(i.FailRedirect)); err != nil {
-		// 		return failParamErr
-		// 	}
-
-		// 	if err := vd.Validate(string(bytes), is.URL); err != nil {
-		// 		return failParamErr
-		// 	}
-
-		// 	return nil
-		// }),
-
+		vd.Field(&i.SuccessRedirect, vd.Required, is.Base64),
+		vd.Field(&i.FailRedirect, vd.Required, is.Base64),
 	)
 }
 
@@ -86,14 +56,7 @@ type OauthLoginInput struct {
 
 func (i OauthLoginInput) Validate() error {
 	return vd.ValidateStruct(&i,
-		vd.Field(&i.State, vd.Required, vd.By(func(value interface{}) error {
-			hasState := strings.HasPrefix(i.State, config.C.OauthState)
-			if !hasState {
-				return errors.New("oauth state is incorrect or unavailable")
-			}
-
-			return nil
-		})),
+		vd.Field(&i.State, vd.Required),
 		vd.Field(&i.AuthCode, vd.Required),
 		vd.Field(&i.UserAgent, vd.Required),
 	)

@@ -10,8 +10,11 @@ import (
 	vd "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/go-ozzo/ozzo-validation/v4/is"
 	"github.com/google/uuid"
-	"github.com/thanishsid/goserver/config"
 	"gopkg.in/guregu/null.v4"
+)
+
+const (
+	CTX_SESSION_KEY ContextKey = "session"
 )
 
 type SessionService interface {
@@ -85,7 +88,7 @@ func (s *Session) IsOwner(userID uuid.UUID) bool {
 
 // Get session from context.
 func SessionFor(ctx context.Context) (*Session, error) {
-	session, ok := ctx.Value(config.SESSION_KEY).(*Session)
+	session, ok := ctx.Value(CTX_SESSION_KEY).(*Session)
 
 	if !ok {
 		return nil, errors.New("session not found in context")
@@ -94,7 +97,7 @@ func SessionFor(ctx context.Context) (*Session, error) {
 	return session, nil
 }
 
-//----- INPUTS --------
+//----- SESSION INPUTS --------
 
 type CreateSessionInput struct {
 	UserID          uuid.UUID

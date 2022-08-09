@@ -61,7 +61,7 @@ type Video struct {
 	UpdatedAt   time.Time   `json:"updatedAt"`
 }
 
-//*------------ MEDIA FORMS ----------------
+//------ MEDIA FORMS -----------
 
 type ImageUploadInput struct {
 	Title       null.String

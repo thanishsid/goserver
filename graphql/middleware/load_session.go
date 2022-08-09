@@ -36,7 +36,7 @@ func LoadSessionMiddleware(sessionSvc domain.SessionService) func(next http.Hand
 			}
 
 			// Create new context with existing request context and the user session.
-			ctxWithSession := context.WithValue(r.Context(), config.SESSION_KEY, session)
+			ctxWithSession := context.WithValue(r.Context(), domain.CTX_SESSION_KEY, session)
 
 			// Invoke next handlers with the user session.
 			next.ServeHTTP(w, r.WithContext(ctxWithSession))

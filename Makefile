@@ -1,4 +1,4 @@
-.PHONY: dockup dockdown redock prune gensql genmock gengql dev tidy test clean
+.PHONY: dockup dockdown redock prune gensql genmock gengql dev tidy test clean generate
 
 dockup: 
 	docker-compose up -d
@@ -13,19 +13,22 @@ prune:
 	docker image prune --filter="dangling=true"
 
 gensql:
-	sqlc -f build/sqlc.yaml generate
+	sqlc generate
 
 genmock:
 	./scripts/genmocks.sh
 
 gengql:
-	gqlgen --config build/gqlgen.yaml generate
+	gqlgen generate
 
 dev:
 	./scripts/dev.sh
 
 tidy:
 	go mod tidy
+
+generate:
+	go generate ./...
 
 test:
 	go test -race ./...

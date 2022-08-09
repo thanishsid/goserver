@@ -77,44 +77,17 @@ func (u *User) CompleteRegistration(ctx context.Context, input domain.CompleteRe
 		return nil, fmt.Errorf("CompleteRegistration.GetClaims: %w", err)
 	}
 
-	userID := uuid.New()
-	now := time.Now()
-
-	passwordHash, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := u.DB.InsertOrUpdateUser(ctx, db.InsertOrUpdateUserParams{
-		ID:           userID,
-		Username:     input.Username,
-		Email:        claims.Email,
-		FullName:     claims.FullName,
-		Role:         string(claims.Role),
-		PasswordHash: null.StringFrom(string(passwordHash)),
-		PictureID:    input.PictureID,
-		CreatedAt:    now,
-		UpdatedAt:    now,
-	}); err != nil {
-		return nil, err
-	}
-
-	user := domain.User{
-		ID:           userID,
-		Email:        claims.Email,
-		Username:     input.Username,
-		FullName:     claims.FullName,
-		Role:         claims.Role,
-		PasswordHash: null.StringFrom(string(passwordHash)),
-		PictureID:    input.PictureID,
-		CreatedAt:    now,
-		UpdatedAt:    now,
-	}
-
-	return &user, nil
+	return u.Create(ctx, domain.CreateUserInput{
+		Username:  input.Username,
+		Email:     claims.Email,
+		FullName:  claims.FullName,
+		Role:      claims.Role,
+		PictureID: input.PictureID,
+		Password:  null.StringFrom(input.Password),
+	})
 }
 
-// Create a new user outside of the registration process.
+// Create a new user.
 func (u *User) Create(ctx context.Context, input domain.CreateUserInput) (*domain.User, error) {
 	if err := input.Validate(); err != nil {
 		return nil, err
@@ -131,6 +104,11 @@ func (u *User) Create(ctx context.Context, input domain.CreateUserInput) (*domai
 			return nil, err
 		}
 		passwordHash = null.StringFrom(string(hash))
+	}
+
+	// Set the input role to Admin if the email matches the Admin Email in config.
+	if input.Email == config.C.AdminEmail {
+		input.Role = domain.RoleAdmin
 	}
 
 	if err := u.DB.InsertOrUpdateUser(ctx, db.InsertOrUpdateUserParams{

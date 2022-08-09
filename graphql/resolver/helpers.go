@@ -35,7 +35,7 @@ func NullIntFromPtr[T Ints](intPtr *T) null.Int {
 
 // Get UserAgent from context.
 func UseragentFor(ctx context.Context) (string, error) {
-	ua, ok := ctx.Value(config.USERAGENT_KEY).(string)
+	ua, ok := ctx.Value(config.CTX_USERAGENT_KEY).(string)
 	if !ok {
 		return "", errors.New("useragnt not found in context")
 	}

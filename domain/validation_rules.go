@@ -8,18 +8,6 @@ import (
 	"gopkg.in/guregu/null.v4"
 )
 
-type ListData[T any] struct {
-	Nodes       []*T
-	Cursors     []string
-	HasMore     bool
-	StartCursor null.String
-	EndCursor   null.String
-}
-
-type EmailStringType interface {
-	string | null.String
-}
-
 // Email validation rule.
 var IsEmail = vd.By(func(value interface{}) error {
 	switch t := value.(type) {

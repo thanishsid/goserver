@@ -47,9 +47,7 @@ type ResolverRoot interface {
 }
 
 type DirectiveRoot struct {
-	Authenticated   func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
-	Authorize       func(ctx context.Context, obj interface{}, next graphql.Resolver, roles *string, allowOwner *bool, mustOwn *bool) (res interface{}, err error)
-	Unauthenticated func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
+	Authorize func(ctx context.Context, obj interface{}, next graphql.Resolver, object string, action string) (res interface{}, err error)
 }
 
 type ComplexityRoot struct {
@@ -91,11 +89,10 @@ type ComplexityRoot struct {
 	}
 
 	Queries struct {
-		GetSessionsByUser func(childComplexity int, id string) int
-		MyInfo            func(childComplexity int) int
-		Roles             func(childComplexity int) int
-		User              func(childComplexity int, id string) int
-		Users             func(childComplexity int, query *string, role *string, showDeleted *bool, limit *int, cursor *string) int
+		MyInfo func(childComplexity int) int
+		Roles  func(childComplexity int) int
+		User   func(childComplexity int, id string) int
+		Users  func(childComplexity int, query *string, role *string, showDeleted *bool, limit *int, cursor *string) int
 	}
 
 	Role struct {
@@ -158,7 +155,6 @@ type MyInfoResolver interface {
 type QueriesResolver interface {
 	MyInfo(ctx context.Context) (*model.MyInfo, error)
 	Roles(ctx context.Context) ([]*model.Role, error)
-	GetSessionsByUser(ctx context.Context, id string) ([]*domain.Session, error)
 	User(ctx context.Context, id string) (*domain.User, error)
 	Users(ctx context.Context, query *string, role *string, showDeleted *bool, limit *int, cursor *string) (*model.UserCollection, error)
 }
@@ -383,18 +379,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.PageInfo.StartCursor(childComplexity), true
-
-	case "Queries.GetSessionsByUser":
-		if e.complexity.Queries.GetSessionsByUser == nil {
-			break
-		}
-
-		args, err := ec.field_Queries_GetSessionsByUser_args(context.TODO(), rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Queries.GetSessionsByUser(childComplexity, args["id"].(string)), true
 
 	case "Queries.myInfo":
 		if e.complexity.Queries.MyInfo == nil {
@@ -676,15 +660,7 @@ directive @goTag(
 
 # Custom Directives
 
-directive @authenticated on FIELD_DEFINITION
-
-directive @unauthenticated on FIELD_DEFINITION
-
-directive @authorize(
-	roles: String
-	allowOwner: Boolean
-	mustOwn: Boolean
-) on FIELD_DEFINITION
+directive @authorize(object: String!, action: String!) on FIELD_DEFINITION
 `, BuiltIn: false},
 	{Name: "../schema/general.graphqls", Input: `type Image @goModel(model: "github.com/thanishsid/goserver/domain.Image") {
 	id: ID!
@@ -721,13 +697,14 @@ schema {
 }
 
 type Queries {
-	myInfo: MyInfo! @authenticated
+	myInfo: MyInfo! @authorize(object: "user", action: "get_my_info")
 
-	roles: [Role!]! @authorize(roles: "admin,manager")
+	roles: [Role!]! @authorize(object: "role", action: "get_all")
 }
 
 type Mutations {
 	UploadImage(file: Upload!, title: String): Image!
+		@authorize(object: "image", action: "upload")
 }
 `, BuiltIn: false},
 	{Name: "../schema/session.graphqls", Input: `type Session @goModel(model: "github.com/thanishsid/goserver/domain.Session") {
@@ -738,17 +715,13 @@ type Mutations {
 }
 
 extend type Mutations {
-	Login(email: String!, password: String!): Message! @unauthenticated
+	Login(email: String!, password: String!): Message!
+		@authorize(object: "session", action: "login")
 
-	Logout: Message! @authenticated
+	Logout: Message! @authorize(object: "session", action: "logout")
 
-	LogoutFromAllDevices: Message! @authenticated
-}
-
-extend type Queries {
-	GetSessionsByUser(id: ID!): [Session!]!
-		@authenticated
-		@authorize(roles: "admin,manager")
+	LogoutFromAllDevices: Message!
+		@authorize(object: "session", action: "logout_all")
 }
 `, BuiltIn: false},
 	{Name: "../schema/user.graphqls", Input: `type User @goModel(model: "github.com/thanishsid/goserver/domain.User") {
@@ -760,8 +733,7 @@ extend type Queries {
 	picture: Image @goField(forceResolver: true)
 	sessions: [Session!]!
 		@goField(forceResolver: true)
-		@authenticated
-		@authorize(roles: "admin,manager", allowOwner: true)
+		@authorize(object: "user", action: "get_sessions")
 	createdAt: Time!
 	updatedAt: Time!
 	deletedAt: Time
@@ -808,29 +780,29 @@ input UpdateProfileInput {
 # User Mutations
 extend type Mutations {
 	StartAccountRegistration(input: StartRegistrationInput!): Message!
-		@unauthenticated
+		@authorize(object: "user", action: "start_registration")
 
 	StartAccountCreation(input: StartUserCreationInput!): Message!
-		@authenticated
-		@authorize(roles: "admin")
+		@authorize(object: "user", action: "start_creation")
 
 	CompleteRegistration(input: CompleteRegistrationInput!): Message!
-		@unauthenticated
+		@authorize(object: "user", action: "complete_registration")
 
-	UpdateProfile(input: UpdateProfileInput!): Message! @authenticated
+	UpdateProfile(input: UpdateProfileInput!): Message!
+		@authorize(object: "user", action: "update_profile")
 
-	DeleteOwnAccount: Message! @authenticated
+	DeleteOwnAccount: Message! @authorize(object: "user", action: "delete_own")
 
 	DeleteAnotherAccount(id: ID!): Message!
-		@authenticated
-		@authorize(roles: "admin")
+		@authorize(object: "user", action: "delete_other")
 
-	RecoverAccount(id: ID!): Message! @authenticated @authorize(roles: "admin")
+	RecoverAccount(id: ID!): Message!
+		@authorize(object: "user", action: "recover")
 }
 
 # User Queries
 extend type Queries {
-	user(id: ID!): User! @authenticated @authorize(roles: "admin,manager")
+	user(id: ID!): User! @authorize(object: "user", action: "get_one")
 
 	users(
 		query: String
@@ -838,7 +810,7 @@ extend type Queries {
 		showDeleted: Boolean
 		limit: Int
 		cursor: String
-	): UserCollection! @authenticated @authorize(roles: "admin,manager")
+	): UserCollection! @authorize(object: "user", action: "get_many")
 }
 `, BuiltIn: false},
 }
@@ -851,33 +823,24 @@ var parsedSchema = gqlparser.MustLoadSchema(sources...)
 func (ec *executionContext) dir_authorize_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 *string
-	if tmp, ok := rawArgs["roles"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("roles"))
-		arg0, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
+	var arg0 string
+	if tmp, ok := rawArgs["object"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("object"))
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["roles"] = arg0
-	var arg1 *bool
-	if tmp, ok := rawArgs["allowOwner"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("allowOwner"))
-		arg1, err = ec.unmarshalOBoolean2ᚖbool(ctx, tmp)
+	args["object"] = arg0
+	var arg1 string
+	if tmp, ok := rawArgs["action"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("action"))
+		arg1, err = ec.unmarshalNString2string(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["allowOwner"] = arg1
-	var arg2 *bool
-	if tmp, ok := rawArgs["mustOwn"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("mustOwn"))
-		arg2, err = ec.unmarshalOBoolean2ᚖbool(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["mustOwn"] = arg2
+	args["action"] = arg1
 	return args, nil
 }
 
@@ -1016,21 +979,6 @@ func (ec *executionContext) field_Mutations_UploadImage_args(ctx context.Context
 		}
 	}
 	args["title"] = arg1
-	return args, nil
-}
-
-func (ec *executionContext) field_Queries_GetSessionsByUser_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
-	var err error
-	args := map[string]interface{}{}
-	var arg0 string
-	if tmp, ok := rawArgs["id"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
-		arg0, err = ec.unmarshalNID2string(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["id"] = arg0
 	return args, nil
 }
 
@@ -1427,8 +1375,36 @@ func (ec *executionContext) _Mutations_UploadImage(ctx context.Context, field gr
 		}
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutations().UploadImage(rctx, fc.Args["file"].(graphql.Upload), fc.Args["title"].(*string))
+		directive0 := func(rctx context.Context) (interface{}, error) {
+			ctx = rctx // use context from middleware stack in children
+			return ec.resolvers.Mutations().UploadImage(rctx, fc.Args["file"].(graphql.Upload), fc.Args["title"].(*string))
+		}
+		directive1 := func(ctx context.Context) (interface{}, error) {
+			object, err := ec.unmarshalNString2string(ctx, "image")
+			if err != nil {
+				return nil, err
+			}
+			action, err := ec.unmarshalNString2string(ctx, "upload")
+			if err != nil {
+				return nil, err
+			}
+			if ec.directives.Authorize == nil {
+				return nil, errors.New("directive authorize is not implemented")
+			}
+			return ec.directives.Authorize(ctx, nil, directive0, object, action)
+		}
+
+		tmp, err := directive1(rctx)
+		if err != nil {
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if tmp == nil {
+			return nil, nil
+		}
+		if data, ok := tmp.(*domain.Image); ok {
+			return data, nil
+		}
+		return nil, fmt.Errorf(`unexpected type %T from directive, should be *github.com/thanishsid/goserver/domain.Image`, tmp)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -1499,10 +1475,18 @@ func (ec *executionContext) _Mutations_Login(ctx context.Context, field graphql.
 			return ec.resolvers.Mutations().Login(rctx, fc.Args["email"].(string), fc.Args["password"].(string))
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.Unauthenticated == nil {
-				return nil, errors.New("directive unauthenticated is not implemented")
+			object, err := ec.unmarshalNString2string(ctx, "session")
+			if err != nil {
+				return nil, err
 			}
-			return ec.directives.Unauthenticated(ctx, nil, directive0)
+			action, err := ec.unmarshalNString2string(ctx, "login")
+			if err != nil {
+				return nil, err
+			}
+			if ec.directives.Authorize == nil {
+				return nil, errors.New("directive authorize is not implemented")
+			}
+			return ec.directives.Authorize(ctx, nil, directive0, object, action)
 		}
 
 		tmp, err := directive1(rctx)
@@ -1578,10 +1562,18 @@ func (ec *executionContext) _Mutations_Logout(ctx context.Context, field graphql
 			return ec.resolvers.Mutations().Logout(rctx)
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.Authenticated == nil {
-				return nil, errors.New("directive authenticated is not implemented")
+			object, err := ec.unmarshalNString2string(ctx, "session")
+			if err != nil {
+				return nil, err
 			}
-			return ec.directives.Authenticated(ctx, nil, directive0)
+			action, err := ec.unmarshalNString2string(ctx, "logout")
+			if err != nil {
+				return nil, err
+			}
+			if ec.directives.Authorize == nil {
+				return nil, errors.New("directive authorize is not implemented")
+			}
+			return ec.directives.Authorize(ctx, nil, directive0, object, action)
 		}
 
 		tmp, err := directive1(rctx)
@@ -1646,10 +1638,18 @@ func (ec *executionContext) _Mutations_LogoutFromAllDevices(ctx context.Context,
 			return ec.resolvers.Mutations().LogoutFromAllDevices(rctx)
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.Authenticated == nil {
-				return nil, errors.New("directive authenticated is not implemented")
+			object, err := ec.unmarshalNString2string(ctx, "session")
+			if err != nil {
+				return nil, err
 			}
-			return ec.directives.Authenticated(ctx, nil, directive0)
+			action, err := ec.unmarshalNString2string(ctx, "logout_all")
+			if err != nil {
+				return nil, err
+			}
+			if ec.directives.Authorize == nil {
+				return nil, errors.New("directive authorize is not implemented")
+			}
+			return ec.directives.Authorize(ctx, nil, directive0, object, action)
 		}
 
 		tmp, err := directive1(rctx)
@@ -1714,10 +1714,18 @@ func (ec *executionContext) _Mutations_StartAccountRegistration(ctx context.Cont
 			return ec.resolvers.Mutations().StartAccountRegistration(rctx, fc.Args["input"].(model.StartRegistrationInput))
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.Unauthenticated == nil {
-				return nil, errors.New("directive unauthenticated is not implemented")
+			object, err := ec.unmarshalNString2string(ctx, "user")
+			if err != nil {
+				return nil, err
 			}
-			return ec.directives.Unauthenticated(ctx, nil, directive0)
+			action, err := ec.unmarshalNString2string(ctx, "start_registration")
+			if err != nil {
+				return nil, err
+			}
+			if ec.directives.Authorize == nil {
+				return nil, errors.New("directive authorize is not implemented")
+			}
+			return ec.directives.Authorize(ctx, nil, directive0, object, action)
 		}
 
 		tmp, err := directive1(rctx)
@@ -1793,23 +1801,21 @@ func (ec *executionContext) _Mutations_StartAccountCreation(ctx context.Context,
 			return ec.resolvers.Mutations().StartAccountCreation(rctx, fc.Args["input"].(model.StartUserCreationInput))
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.Authenticated == nil {
-				return nil, errors.New("directive authenticated is not implemented")
+			object, err := ec.unmarshalNString2string(ctx, "user")
+			if err != nil {
+				return nil, err
 			}
-			return ec.directives.Authenticated(ctx, nil, directive0)
-		}
-		directive2 := func(ctx context.Context) (interface{}, error) {
-			roles, err := ec.unmarshalOString2ᚖstring(ctx, "admin")
+			action, err := ec.unmarshalNString2string(ctx, "start_creation")
 			if err != nil {
 				return nil, err
 			}
 			if ec.directives.Authorize == nil {
 				return nil, errors.New("directive authorize is not implemented")
 			}
-			return ec.directives.Authorize(ctx, nil, directive1, roles, nil, nil)
+			return ec.directives.Authorize(ctx, nil, directive0, object, action)
 		}
 
-		tmp, err := directive2(rctx)
+		tmp, err := directive1(rctx)
 		if err != nil {
 			return nil, graphql.ErrorOnPath(ctx, err)
 		}
@@ -1882,10 +1888,18 @@ func (ec *executionContext) _Mutations_CompleteRegistration(ctx context.Context,
 			return ec.resolvers.Mutations().CompleteRegistration(rctx, fc.Args["input"].(model.CompleteRegistrationInput))
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.Unauthenticated == nil {
-				return nil, errors.New("directive unauthenticated is not implemented")
+			object, err := ec.unmarshalNString2string(ctx, "user")
+			if err != nil {
+				return nil, err
 			}
-			return ec.directives.Unauthenticated(ctx, nil, directive0)
+			action, err := ec.unmarshalNString2string(ctx, "complete_registration")
+			if err != nil {
+				return nil, err
+			}
+			if ec.directives.Authorize == nil {
+				return nil, errors.New("directive authorize is not implemented")
+			}
+			return ec.directives.Authorize(ctx, nil, directive0, object, action)
 		}
 
 		tmp, err := directive1(rctx)
@@ -1961,10 +1975,18 @@ func (ec *executionContext) _Mutations_UpdateProfile(ctx context.Context, field 
 			return ec.resolvers.Mutations().UpdateProfile(rctx, fc.Args["input"].(model.UpdateProfileInput))
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.Authenticated == nil {
-				return nil, errors.New("directive authenticated is not implemented")
+			object, err := ec.unmarshalNString2string(ctx, "user")
+			if err != nil {
+				return nil, err
 			}
-			return ec.directives.Authenticated(ctx, nil, directive0)
+			action, err := ec.unmarshalNString2string(ctx, "update_profile")
+			if err != nil {
+				return nil, err
+			}
+			if ec.directives.Authorize == nil {
+				return nil, errors.New("directive authorize is not implemented")
+			}
+			return ec.directives.Authorize(ctx, nil, directive0, object, action)
 		}
 
 		tmp, err := directive1(rctx)
@@ -2040,10 +2062,18 @@ func (ec *executionContext) _Mutations_DeleteOwnAccount(ctx context.Context, fie
 			return ec.resolvers.Mutations().DeleteOwnAccount(rctx)
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.Authenticated == nil {
-				return nil, errors.New("directive authenticated is not implemented")
+			object, err := ec.unmarshalNString2string(ctx, "user")
+			if err != nil {
+				return nil, err
 			}
-			return ec.directives.Authenticated(ctx, nil, directive0)
+			action, err := ec.unmarshalNString2string(ctx, "delete_own")
+			if err != nil {
+				return nil, err
+			}
+			if ec.directives.Authorize == nil {
+				return nil, errors.New("directive authorize is not implemented")
+			}
+			return ec.directives.Authorize(ctx, nil, directive0, object, action)
 		}
 
 		tmp, err := directive1(rctx)
@@ -2108,23 +2138,21 @@ func (ec *executionContext) _Mutations_DeleteAnotherAccount(ctx context.Context,
 			return ec.resolvers.Mutations().DeleteAnotherAccount(rctx, fc.Args["id"].(string))
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.Authenticated == nil {
-				return nil, errors.New("directive authenticated is not implemented")
+			object, err := ec.unmarshalNString2string(ctx, "user")
+			if err != nil {
+				return nil, err
 			}
-			return ec.directives.Authenticated(ctx, nil, directive0)
-		}
-		directive2 := func(ctx context.Context) (interface{}, error) {
-			roles, err := ec.unmarshalOString2ᚖstring(ctx, "admin")
+			action, err := ec.unmarshalNString2string(ctx, "delete_other")
 			if err != nil {
 				return nil, err
 			}
 			if ec.directives.Authorize == nil {
 				return nil, errors.New("directive authorize is not implemented")
 			}
-			return ec.directives.Authorize(ctx, nil, directive1, roles, nil, nil)
+			return ec.directives.Authorize(ctx, nil, directive0, object, action)
 		}
 
-		tmp, err := directive2(rctx)
+		tmp, err := directive1(rctx)
 		if err != nil {
 			return nil, graphql.ErrorOnPath(ctx, err)
 		}
@@ -2197,23 +2225,21 @@ func (ec *executionContext) _Mutations_RecoverAccount(ctx context.Context, field
 			return ec.resolvers.Mutations().RecoverAccount(rctx, fc.Args["id"].(string))
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.Authenticated == nil {
-				return nil, errors.New("directive authenticated is not implemented")
+			object, err := ec.unmarshalNString2string(ctx, "user")
+			if err != nil {
+				return nil, err
 			}
-			return ec.directives.Authenticated(ctx, nil, directive0)
-		}
-		directive2 := func(ctx context.Context) (interface{}, error) {
-			roles, err := ec.unmarshalOString2ᚖstring(ctx, "admin")
+			action, err := ec.unmarshalNString2string(ctx, "recover")
 			if err != nil {
 				return nil, err
 			}
 			if ec.directives.Authorize == nil {
 				return nil, errors.New("directive authorize is not implemented")
 			}
-			return ec.directives.Authorize(ctx, nil, directive1, roles, nil, nil)
+			return ec.directives.Authorize(ctx, nil, directive0, object, action)
 		}
 
-		tmp, err := directive2(rctx)
+		tmp, err := directive1(rctx)
 		if err != nil {
 			return nil, graphql.ErrorOnPath(ctx, err)
 		}
@@ -2538,10 +2564,18 @@ func (ec *executionContext) _Queries_myInfo(ctx context.Context, field graphql.C
 			return ec.resolvers.Queries().MyInfo(rctx)
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.Authenticated == nil {
-				return nil, errors.New("directive authenticated is not implemented")
+			object, err := ec.unmarshalNString2string(ctx, "user")
+			if err != nil {
+				return nil, err
 			}
-			return ec.directives.Authenticated(ctx, nil, directive0)
+			action, err := ec.unmarshalNString2string(ctx, "get_my_info")
+			if err != nil {
+				return nil, err
+			}
+			if ec.directives.Authorize == nil {
+				return nil, errors.New("directive authorize is not implemented")
+			}
+			return ec.directives.Authorize(ctx, nil, directive0, object, action)
 		}
 
 		tmp, err := directive1(rctx)
@@ -2608,14 +2642,18 @@ func (ec *executionContext) _Queries_roles(ctx context.Context, field graphql.Co
 			return ec.resolvers.Queries().Roles(rctx)
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			roles, err := ec.unmarshalOString2ᚖstring(ctx, "admin,manager")
+			object, err := ec.unmarshalNString2string(ctx, "role")
+			if err != nil {
+				return nil, err
+			}
+			action, err := ec.unmarshalNString2string(ctx, "get_all")
 			if err != nil {
 				return nil, err
 			}
 			if ec.directives.Authorize == nil {
 				return nil, errors.New("directive authorize is not implemented")
 			}
-			return ec.directives.Authorize(ctx, nil, directive0, roles, nil, nil)
+			return ec.directives.Authorize(ctx, nil, directive0, object, action)
 		}
 
 		tmp, err := directive1(rctx)
@@ -2664,101 +2702,6 @@ func (ec *executionContext) fieldContext_Queries_roles(ctx context.Context, fiel
 	return fc, nil
 }
 
-func (ec *executionContext) _Queries_GetSessionsByUser(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Queries_GetSessionsByUser(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		directive0 := func(rctx context.Context) (interface{}, error) {
-			ctx = rctx // use context from middleware stack in children
-			return ec.resolvers.Queries().GetSessionsByUser(rctx, fc.Args["id"].(string))
-		}
-		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.Authenticated == nil {
-				return nil, errors.New("directive authenticated is not implemented")
-			}
-			return ec.directives.Authenticated(ctx, nil, directive0)
-		}
-		directive2 := func(ctx context.Context) (interface{}, error) {
-			roles, err := ec.unmarshalOString2ᚖstring(ctx, "admin,manager")
-			if err != nil {
-				return nil, err
-			}
-			if ec.directives.Authorize == nil {
-				return nil, errors.New("directive authorize is not implemented")
-			}
-			return ec.directives.Authorize(ctx, nil, directive1, roles, nil, nil)
-		}
-
-		tmp, err := directive2(rctx)
-		if err != nil {
-			return nil, graphql.ErrorOnPath(ctx, err)
-		}
-		if tmp == nil {
-			return nil, nil
-		}
-		if data, ok := tmp.([]*domain.Session); ok {
-			return data, nil
-		}
-		return nil, fmt.Errorf(`unexpected type %T from directive, should be []*github.com/thanishsid/goserver/domain.Session`, tmp)
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.([]*domain.Session)
-	fc.Result = res
-	return ec.marshalNSession2ᚕᚖgithubᚗcomᚋthanishsidᚋgoserverᚋdomainᚐSessionᚄ(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Queries_GetSessionsByUser(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Queries",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "id":
-				return ec.fieldContext_Session_id(ctx, field)
-			case "userAgent":
-				return ec.fieldContext_Session_userAgent(ctx, field)
-			case "createdAt":
-				return ec.fieldContext_Session_createdAt(ctx, field)
-			case "accessedAt":
-				return ec.fieldContext_Session_accessedAt(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type Session", field.Name)
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Queries_GetSessionsByUser_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _Queries_user(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Queries_user(ctx, field)
 	if err != nil {
@@ -2777,23 +2720,21 @@ func (ec *executionContext) _Queries_user(ctx context.Context, field graphql.Col
 			return ec.resolvers.Queries().User(rctx, fc.Args["id"].(string))
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.Authenticated == nil {
-				return nil, errors.New("directive authenticated is not implemented")
+			object, err := ec.unmarshalNString2string(ctx, "user")
+			if err != nil {
+				return nil, err
 			}
-			return ec.directives.Authenticated(ctx, nil, directive0)
-		}
-		directive2 := func(ctx context.Context) (interface{}, error) {
-			roles, err := ec.unmarshalOString2ᚖstring(ctx, "admin,manager")
+			action, err := ec.unmarshalNString2string(ctx, "get_one")
 			if err != nil {
 				return nil, err
 			}
 			if ec.directives.Authorize == nil {
 				return nil, errors.New("directive authorize is not implemented")
 			}
-			return ec.directives.Authorize(ctx, nil, directive1, roles, nil, nil)
+			return ec.directives.Authorize(ctx, nil, directive0, object, action)
 		}
 
-		tmp, err := directive2(rctx)
+		tmp, err := directive1(rctx)
 		if err != nil {
 			return nil, graphql.ErrorOnPath(ctx, err)
 		}
@@ -2884,23 +2825,21 @@ func (ec *executionContext) _Queries_users(ctx context.Context, field graphql.Co
 			return ec.resolvers.Queries().Users(rctx, fc.Args["query"].(*string), fc.Args["role"].(*string), fc.Args["showDeleted"].(*bool), fc.Args["limit"].(*int), fc.Args["cursor"].(*string))
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.Authenticated == nil {
-				return nil, errors.New("directive authenticated is not implemented")
+			object, err := ec.unmarshalNString2string(ctx, "user")
+			if err != nil {
+				return nil, err
 			}
-			return ec.directives.Authenticated(ctx, nil, directive0)
-		}
-		directive2 := func(ctx context.Context) (interface{}, error) {
-			roles, err := ec.unmarshalOString2ᚖstring(ctx, "admin,manager")
+			action, err := ec.unmarshalNString2string(ctx, "get_many")
 			if err != nil {
 				return nil, err
 			}
 			if ec.directives.Authorize == nil {
 				return nil, errors.New("directive authorize is not implemented")
 			}
-			return ec.directives.Authorize(ctx, nil, directive1, roles, nil, nil)
+			return ec.directives.Authorize(ctx, nil, directive0, object, action)
 		}
 
-		tmp, err := directive2(rctx)
+		tmp, err := directive1(rctx)
 		if err != nil {
 			return nil, graphql.ErrorOnPath(ctx, err)
 		}
@@ -3643,27 +3582,21 @@ func (ec *executionContext) _User_sessions(ctx context.Context, field graphql.Co
 			return ec.resolvers.User().Sessions(rctx, obj)
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.Authenticated == nil {
-				return nil, errors.New("directive authenticated is not implemented")
-			}
-			return ec.directives.Authenticated(ctx, obj, directive0)
-		}
-		directive2 := func(ctx context.Context) (interface{}, error) {
-			roles, err := ec.unmarshalOString2ᚖstring(ctx, "admin,manager")
+			object, err := ec.unmarshalNString2string(ctx, "user")
 			if err != nil {
 				return nil, err
 			}
-			allowOwner, err := ec.unmarshalOBoolean2ᚖbool(ctx, true)
+			action, err := ec.unmarshalNString2string(ctx, "get_sessions")
 			if err != nil {
 				return nil, err
 			}
 			if ec.directives.Authorize == nil {
 				return nil, errors.New("directive authorize is not implemented")
 			}
-			return ec.directives.Authorize(ctx, obj, directive1, roles, allowOwner, nil)
+			return ec.directives.Authorize(ctx, obj, directive0, object, action)
 		}
 
-		tmp, err := directive2(rctx)
+		tmp, err := directive1(rctx)
 		if err != nil {
 			return nil, graphql.ErrorOnPath(ctx, err)
 		}
@@ -6471,29 +6404,6 @@ func (ec *executionContext) _Queries(ctx context.Context, sel ast.SelectionSet) 
 					}
 				}()
 				res = ec._Queries_roles(ctx, field)
-				if res == graphql.Null {
-					atomic.AddUint32(&invalids, 1)
-				}
-				return res
-			}
-
-			rrm := func(ctx context.Context) graphql.Marshaler {
-				return ec.OperationContext.RootResolverMiddleware(ctx, innerFunc)
-			}
-
-			out.Concurrently(i, func() graphql.Marshaler {
-				return rrm(innerCtx)
-			})
-		case "GetSessionsByUser":
-			field := field
-
-			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Queries_GetSessionsByUser(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&invalids, 1)
 				}
