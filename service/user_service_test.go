@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"fmt"
-	"math/rand"
 	"reflect"
 	"testing"
 	"time"
@@ -20,42 +19,6 @@ import (
 	"github.com/thanishsid/goserver/mock"
 	"gopkg.in/guregu/null.v4"
 )
-
-func init() {
-	rand.Seed(time.Now().UnixNano())
-}
-
-func getRandRole() domain.Role {
-	randIndex := rand.Intn(len(domain.Roles))
-	return domain.Roles[randIndex].ID
-}
-
-func getFakeUser() *domain.User {
-	return &domain.User{
-		ID:           uuid.New(),
-		Email:        fake.Email(),
-		Username:     fake.Username(),
-		FullName:     fake.Name(),
-		PasswordHash: null.StringFrom(fake.Password(true, true, true, true, false, 16)),
-		Role:         getRandRole(),
-		PictureID: uuid.NullUUID{
-			UUID:  uuid.New(),
-			Valid: true,
-		},
-		CreatedAt: time.Now().Add(-time.Hour * 24 * 200),
-		UpdatedAt: time.Now().Add(-time.Hour * 36),
-	}
-}
-
-func getManyFakeUsers(count int) []*domain.User {
-	users := make([]*domain.User, count)
-
-	for i := 0; i < count; i++ {
-		users[i] = getFakeUser()
-	}
-
-	return users
-}
 
 func TestUser_InitRegistration(t *testing.T) {
 	t.Parallel()
@@ -427,10 +390,10 @@ func TestUser_ChangeRole(t *testing.T) {
 		input domain.RoleChangeInput
 	}
 
-	user := getFakeUser()
+	testUser := getFakeUser(t)
 
 	input := domain.RoleChangeInput{
-		UserID: user.ID,
+		UserID: testUser.User.ID,
 		Role:   getRandRole(),
 	}
 
@@ -451,32 +414,32 @@ func TestUser_ChangeRole(t *testing.T) {
 							},
 							GetUserByIdFunc: func(ctx context.Context, userID uuid.UUID) (db.GetUserByIdRow, error) {
 								return db.GetUserByIdRow{
-									ID:           user.ID,
-									Username:     user.Username,
-									Email:        user.Email,
-									FullName:     user.FullName,
-									Role:         user.Role.String(),
-									PasswordHash: user.PasswordHash,
-									PictureID:    user.PictureID,
-									CreatedAt:    user.CreatedAt,
-									UpdatedAt:    user.UpdatedAt,
-									DeletedAt:    user.DeletedAt,
+									ID:           testUser.User.ID,
+									Username:     testUser.User.Username,
+									Email:        testUser.User.Email,
+									FullName:     testUser.User.FullName,
+									Role:         testUser.User.Role.String(),
+									PasswordHash: testUser.User.PasswordHash,
+									PictureID:    testUser.User.PictureID,
+									CreatedAt:    testUser.User.CreatedAt,
+									UpdatedAt:    testUser.User.UpdatedAt,
+									DeletedAt:    testUser.User.DeletedAt,
 								}, nil
 							},
 							InsertOrUpdateUserFunc: func(ctx context.Context, arg db.InsertOrUpdateUserParams) error {
 								require.Equal(t, arg, db.InsertOrUpdateUserParams{
-									ID:           user.ID,
-									Username:     user.Username,
-									Email:        user.Email,
-									FullName:     user.FullName,
+									ID:           testUser.User.ID,
+									Username:     testUser.User.Username,
+									Email:        testUser.User.Email,
+									FullName:     testUser.User.FullName,
 									Role:         input.Role.String(),
-									PasswordHash: user.PasswordHash,
-									PictureID:    user.PictureID,
-									CreatedAt:    user.CreatedAt,
+									PasswordHash: testUser.User.PasswordHash,
+									PictureID:    testUser.User.PictureID,
+									CreatedAt:    testUser.User.CreatedAt,
 									UpdatedAt:    arg.UpdatedAt,
 								})
 
-								require.True(t, arg.UpdatedAt.After(user.UpdatedAt))
+								require.True(t, arg.UpdatedAt.After(testUser.User.UpdatedAt))
 
 								return nil
 							},
@@ -488,7 +451,7 @@ func TestUser_ChangeRole(t *testing.T) {
 				},
 				SessionService: &mock.SessionServiceMock{
 					UpdateRoleByUserIDFunc: func(ctx context.Context, userID uuid.UUID, role domain.Role) error {
-						require.Equal(t, userID, user.ID)
+						require.Equal(t, userID, testUser.User.ID)
 						require.Equal(t, role, input.Role)
 						return nil
 					},
@@ -554,7 +517,7 @@ func TestUser_Delete(t *testing.T) {
 		id  uuid.UUID
 	}
 
-	user := getFakeUser()
+	testUser := getFakeUser(t)
 
 	tests := []struct {
 		name    string
@@ -567,35 +530,35 @@ func TestUser_Delete(t *testing.T) {
 			fields: fields{
 				DB: &mock.DBMock{
 					GetUserByIdFunc: func(ctx context.Context, userID uuid.UUID) (db.GetUserByIdRow, error) {
-						require.Equal(t, userID, user.ID)
+						require.Equal(t, userID, testUser.User.ID)
 						return db.GetUserByIdRow{
 							ID:           userID,
-							Username:     user.Username,
-							Email:        user.Email,
-							FullName:     user.FullName,
-							Role:         user.Role.String(),
-							PasswordHash: user.PasswordHash,
-							PictureID:    user.PictureID,
-							CreatedAt:    user.CreatedAt,
-							UpdatedAt:    user.UpdatedAt,
-							DeletedAt:    user.DeletedAt,
+							Username:     testUser.User.Username,
+							Email:        testUser.User.Email,
+							FullName:     testUser.User.FullName,
+							Role:         testUser.User.Role.String(),
+							PasswordHash: testUser.User.PasswordHash,
+							PictureID:    testUser.User.PictureID,
+							CreatedAt:    testUser.User.CreatedAt,
+							UpdatedAt:    testUser.User.UpdatedAt,
+							DeletedAt:    testUser.User.DeletedAt,
 						}, nil
 					},
 					SoftDeleteUserFunc: func(ctx context.Context, userID uuid.UUID) error {
-						require.Equal(t, userID, user.ID)
+						require.Equal(t, userID, testUser.User.ID)
 						return nil
 					},
 				},
 				SessionService: &mock.SessionServiceMock{
 					DeleteAllByUserIDFunc: func(ctx context.Context, userID uuid.UUID) error {
-						require.Equal(t, userID, user.ID)
+						require.Equal(t, userID, testUser.User.ID)
 						return nil
 					},
 				},
 			},
 			args: args{
 				ctx: context.Background(),
-				id:  user.ID,
+				id:  testUser.User.ID,
 			},
 			wantErr: false,
 		},
@@ -610,7 +573,7 @@ func TestUser_Delete(t *testing.T) {
 			},
 			args: args{
 				ctx: context.Background(),
-				id:  user.ID,
+				id:  testUser.User.ID,
 			},
 			wantErr: true,
 		},
@@ -646,7 +609,7 @@ func TestUser_One(t *testing.T) {
 		id  uuid.UUID
 	}
 
-	user := getFakeUser()
+	testUser := getFakeUser(t)
 
 	tests := []struct {
 		name    string
@@ -660,27 +623,27 @@ func TestUser_One(t *testing.T) {
 			fields: fields{
 				DB: &mock.DBMock{
 					GetUserByIdFunc: func(ctx context.Context, userID uuid.UUID) (db.GetUserByIdRow, error) {
-						require.Equal(t, userID, user.ID)
+						require.Equal(t, userID, testUser.User.ID)
 						return db.GetUserByIdRow{
-							ID:           user.ID,
-							Username:     user.Username,
-							Email:        user.Email,
-							FullName:     user.FullName,
-							Role:         user.Role.String(),
-							PasswordHash: user.PasswordHash,
-							PictureID:    user.PictureID,
-							CreatedAt:    user.CreatedAt,
-							UpdatedAt:    user.UpdatedAt,
-							DeletedAt:    user.DeletedAt,
+							ID:           testUser.User.ID,
+							Username:     testUser.User.Username,
+							Email:        testUser.User.Email,
+							FullName:     testUser.User.FullName,
+							Role:         testUser.User.Role.String(),
+							PasswordHash: testUser.User.PasswordHash,
+							PictureID:    testUser.User.PictureID,
+							CreatedAt:    testUser.User.CreatedAt,
+							UpdatedAt:    testUser.User.UpdatedAt,
+							DeletedAt:    testUser.User.DeletedAt,
 						}, nil
 					},
 				},
 			},
 			args: args{
 				ctx: context.Background(),
-				id:  user.ID,
+				id:  testUser.User.ID,
 			},
-			want:    user,
+			want:    testUser.User,
 			wantErr: false,
 		},
 		{
@@ -694,7 +657,7 @@ func TestUser_One(t *testing.T) {
 			},
 			args: args{
 				ctx: context.Background(),
-				id:  user.ID,
+				id:  testUser.User.ID,
 			},
 			wantErr: true,
 			want:    nil,
@@ -725,19 +688,19 @@ func TestUser_Many(t *testing.T) {
 	t.Parallel()
 
 	var getManyUserRows = func(count int) []db.GetManyUsersRow {
-		users := getManyFakeUsers(count)
+		testUsers := getManyFakeUsers(t, count)
 		userRows := make([]db.GetManyUsersRow, count)
 		for i := range userRows {
 			userRows[i] = db.GetManyUsersRow{
-				ID:        users[i].ID,
-				Username:  users[i].Username,
-				Email:     users[i].Email,
-				FullName:  users[i].FullName,
-				Role:      users[i].Role.String(),
-				PictureID: users[i].PictureID,
-				CreatedAt: users[i].CreatedAt,
-				UpdatedAt: users[i].UpdatedAt,
-				DeletedAt: users[i].DeletedAt,
+				ID:        testUsers.Users[i].ID,
+				Username:  testUsers.Users[i].Username,
+				Email:     testUsers.Users[i].Email,
+				FullName:  testUsers.Users[i].FullName,
+				Role:      testUsers.Users[i].Role.String(),
+				PictureID: testUsers.Users[i].PictureID,
+				CreatedAt: testUsers.Users[i].CreatedAt,
+				UpdatedAt: testUsers.Users[i].UpdatedAt,
+				DeletedAt: testUsers.Users[i].DeletedAt,
 			}
 		}
 		return userRows
@@ -940,11 +903,10 @@ func TestUser_AllByIDS(t *testing.T) {
 		ids []uuid.UUID
 	}
 
-	users := getManyFakeUsers(100)
-	userIDS := make([]uuid.UUID, len(users))
-	for i, user := range users {
-		userIDS[i] = user.ID
-		users[i].PasswordHash = null.String{}
+	testUsers := getManyFakeUsers(t, 100)
+
+	for _, user := range testUsers.Users {
+		user.PasswordHash = null.String{}
 	}
 
 	tests := []struct {
@@ -959,10 +921,10 @@ func TestUser_AllByIDS(t *testing.T) {
 			fields: fields{
 				DB: &mock.DBMock{
 					GetAllUsersInIDSFunc: func(ctx context.Context, userIds []uuid.UUID) ([]db.GetAllUsersInIDSRow, error) {
-						require.Equal(t, userIds, userIDS)
-						userRows := make([]db.GetAllUsersInIDSRow, len(users))
+						require.Equal(t, userIds, testUsers.UserIDS)
+						userRows := make([]db.GetAllUsersInIDSRow, len(testUsers.Users))
 
-						for i, user := range users {
+						for i, user := range testUsers.Users {
 							userRows[i] = db.GetAllUsersInIDSRow{
 								ID:        user.ID,
 								Username:  user.Username,
@@ -982,9 +944,9 @@ func TestUser_AllByIDS(t *testing.T) {
 			},
 			args: args{
 				ctx: context.Background(),
-				ids: userIDS,
+				ids: testUsers.UserIDS,
 			},
-			want:    users,
+			want:    testUsers.Users,
 			wantErr: false,
 		},
 	}
@@ -1009,158 +971,3 @@ func TestUser_AllByIDS(t *testing.T) {
 		})
 	}
 }
-
-// func TestUser_VerifyCredentials(t *testing.T) {
-// 	t.Parallel()
-
-// 	type fields struct {
-// 		Tokens         tokenizer.Tokenizer
-// 		Mail           mailer.Mailer
-// 		DB             db.DB
-// 		SessionService domain.SessionService
-// 	}
-
-// 	type args struct {
-// 		ctx     context.Context
-// 		input   domain.VerifyCredentialsInput
-// 		ErrType error
-// 	}
-
-// 	invalidEmailInput := domain.VerifyCredentialsInput{
-// 		Email:    "invalid@@gmail.com",
-// 		Password: "testPassword",
-// 	}
-
-// 	user := getFakeUser()
-
-// 	userPassword := fake.Password(true, true, true, true, false, 16)
-// 	passWordHash, err := bcrypt.GenerateFromPassword([]byte(userPassword), bcrypt.DefaultCost)
-// 	require.NoError(t, err)
-// 	user.PasswordHash = string(passWordHash)
-
-// 	invalidPasswordInput := domain.VerifyCredentialsInput{
-// 		Email:    user.Email,
-// 		Password: "testWrongPassword",
-// 	}
-
-// 	input := domain.VerifyCredentialsInput{
-// 		Email:    user.Email,
-// 		Password: userPassword,
-// 	}
-
-// 	tests := []struct {
-// 		name    string
-// 		fields  fields
-// 		args    args
-// 		want    *domain.User
-// 		wantErr bool
-// 	}{
-// 		{
-// 			name: "Test Invalid Email",
-// 			args: args{
-// 				ctx:   context.Background(),
-// 				input: invalidEmailInput,
-// 			},
-// 			want:    nil,
-// 			wantErr: true,
-// 		},
-// 		{
-// 			name: "Test Invalid Password",
-// 			fields: fields{
-// 				DB: &mock.DBMock{
-// 					GetUserByEmailFunc: func(ctx context.Context, email string) (db.GetUserByEmailRow, error) {
-// 						require.Equal(t, email, invalidPasswordInput.Email)
-// 						return db.GetUserByEmailRow{
-// 							ID:           user.ID,
-// 							Username:     user.Username,
-// 							Email:        user.Email,
-// 							FullName:     user.FullName,
-// 							Role:         user.Role.String(),
-// 							PasswordHash: user.PasswordHash,
-// 							PictureID:    user.PictureID,
-// 							CreatedAt:    user.CreatedAt,
-// 							UpdatedAt:    user.UpdatedAt,
-// 							DeletedAt:    user.DeletedAt,
-// 						}, nil
-// 					},
-// 				},
-// 			},
-// 			args: args{
-// 				ctx:   context.Background(),
-// 				input: invalidPasswordInput,
-// 			},
-// 			want:    nil,
-// 			wantErr: true,
-// 		},
-// 		{
-// 			name: "Test Return Error if user does not exist",
-// 			fields: fields{
-// 				DB: &mock.DBMock{
-// 					GetUserByEmailFunc: func(ctx context.Context, email string) (db.GetUserByEmailRow, error) {
-// 						return db.GetUserByEmailRow{}, pgx.ErrNoRows
-// 					},
-// 				},
-// 			},
-// 			args: args{
-// 				ctx:     context.Background(),
-// 				input:   input,
-// 				ErrType: ErrNotFound,
-// 			},
-// 			want:    nil,
-// 			wantErr: true,
-// 		},
-// 		{
-// 			name: "Test Valid Credentials",
-// 			fields: fields{
-// 				DB: &mock.DBMock{
-// 					GetUserByEmailFunc: func(ctx context.Context, email string) (db.GetUserByEmailRow, error) {
-// 						require.Equal(t, email, input.Email)
-// 						return db.GetUserByEmailRow{
-// 							ID:           user.ID,
-// 							Username:     user.Username,
-// 							Email:        user.Email,
-// 							FullName:     user.FullName,
-// 							Role:         user.Role.String(),
-// 							PasswordHash: user.PasswordHash,
-// 							PictureID:    user.PictureID,
-// 							CreatedAt:    user.CreatedAt,
-// 							UpdatedAt:    user.UpdatedAt,
-// 							DeletedAt:    user.DeletedAt,
-// 						}, nil
-// 					},
-// 				},
-// 			},
-// 			args: args{
-// 				ctx:   context.Background(),
-// 				input: input,
-// 			},
-// 			want:    user,
-// 			wantErr: false,
-// 		},
-// 	}
-
-// 	for _, tt := range tests {
-// 		t.Run(tt.name, func(t *testing.T) {
-// 			u := &User{
-// 				Tokens:         tt.fields.Tokens,
-// 				Mail:           tt.fields.Mail,
-// 				DB:             tt.fields.DB,
-// 				SessionService: tt.fields.SessionService,
-// 			}
-
-// 			got, err := u.VerifyCredentials(tt.args.ctx, tt.args.input)
-// 			if (err != nil) != tt.wantErr {
-// 				t.Errorf("User.VerifyCredentials() error = %v, wantErr %v", err, tt.wantErr)
-// 				return
-// 			}
-
-// 			if (tt.wantErr && tt.args.ErrType != nil) && (err != tt.args.ErrType || !errors.Is(err, tt.args.ErrType)) {
-// 				t.Errorf("Invalid error type: need '%v' but got '%v'", tt.args.ErrType, err)
-// 			}
-
-// 			if !reflect.DeepEqual(got, tt.want) {
-// 				t.Errorf("User.VerifyCredentials() = %v, want %v", got, tt.want)
-// 			}
-// 		})
-// 	}
-// }

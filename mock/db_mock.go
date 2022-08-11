@@ -27,14 +27,23 @@ var _ db.DB = &DBMock{}
 //			CheckImageExistsFunc: func(ctx context.Context, id uuid.UUID) (bool, error) {
 //				panic("mock out the CheckImageExists method")
 //			},
-//			CheckImageHashExistsFunc: func(ctx context.Context, fileHash []byte) (bool, error) {
-//				panic("mock out the CheckImageHashExists method")
+//			CheckImageFileExistsFunc: func(ctx context.Context, filename string) (bool, error) {
+//				panic("mock out the CheckImageFileExists method")
+//			},
+//			CheckVideoExistsFunc: func(ctx context.Context, id uuid.UUID) (bool, error) {
+//				panic("mock out the CheckVideoExists method")
+//			},
+//			CheckVideoFileExistsFunc: func(ctx context.Context, filename string) (bool, error) {
+//				panic("mock out the CheckVideoFileExists method")
 //			},
 //			DeleteImageFunc: func(ctx context.Context, id uuid.UUID) error {
 //				panic("mock out the DeleteImage method")
 //			},
 //			DeleteRoleFunc: func(ctx context.Context, id string) error {
 //				panic("mock out the DeleteRole method")
+//			},
+//			DeleteVideoFunc: func(ctx context.Context, id uuid.UUID) error {
+//				panic("mock out the DeleteVideo method")
 //			},
 //			GetAllImagesInIDSFunc: func(ctx context.Context, imageIds []uuid.UUID) ([]db.GetAllImagesInIDSRow, error) {
 //				panic("mock out the GetAllImagesInIDS method")
@@ -45,7 +54,10 @@ var _ db.DB = &DBMock{}
 //			GetAllUsersInIDSFunc: func(ctx context.Context, userIds []uuid.UUID) ([]db.GetAllUsersInIDSRow, error) {
 //				panic("mock out the GetAllUsersInIDS method")
 //			},
-//			GetImageByIdFunc: func(ctx context.Context, id uuid.UUID) (db.Image, error) {
+//			GetAllVideosInIDSFunc: func(ctx context.Context, videoIds []uuid.UUID) ([]db.Video, error) {
+//				panic("mock out the GetAllVideosInIDS method")
+//			},
+//			GetImageByIdFunc: func(ctx context.Context, id uuid.UUID) (db.GetImageByIdRow, error) {
 //				panic("mock out the GetImageById method")
 //			},
 //			GetManyImagesFunc: func(ctx context.Context, arg db.GetManyImagesParams) ([]db.GetManyImagesRow, error) {
@@ -54,11 +66,17 @@ var _ db.DB = &DBMock{}
 //			GetManyUsersFunc: func(ctx context.Context, arg db.GetManyUsersParams) ([]db.GetManyUsersRow, error) {
 //				panic("mock out the GetManyUsers method")
 //			},
+//			GetManyVideosFunc: func(ctx context.Context, arg db.GetManyVideosParams) ([]db.Video, error) {
+//				panic("mock out the GetManyVideos method")
+//			},
 //			GetUserByEmailFunc: func(ctx context.Context, email string) (db.GetUserByEmailRow, error) {
 //				panic("mock out the GetUserByEmail method")
 //			},
 //			GetUserByIdFunc: func(ctx context.Context, userID uuid.UUID) (db.GetUserByIdRow, error) {
 //				panic("mock out the GetUserById method")
+//			},
+//			GetVideoByIdFunc: func(ctx context.Context, id uuid.UUID) (db.Video, error) {
+//				panic("mock out the GetVideoById method")
 //			},
 //			HardDeleteUserFunc: func(ctx context.Context, userID uuid.UUID) error {
 //				panic("mock out the HardDeleteUser method")
@@ -71,6 +89,9 @@ var _ db.DB = &DBMock{}
 //			},
 //			InsertOrUpdateUserFunc: func(ctx context.Context, arg db.InsertOrUpdateUserParams) error {
 //				panic("mock out the InsertOrUpdateUser method")
+//			},
+//			InsertOrUpdateVideoFunc: func(ctx context.Context, arg db.InsertOrUpdateVideoParams) error {
+//				panic("mock out the InsertOrUpdateVideo method")
 //			},
 //			SoftDeleteUserFunc: func(ctx context.Context, userID uuid.UUID) error {
 //				panic("mock out the SoftDeleteUser method")
@@ -88,14 +109,23 @@ type DBMock struct {
 	// CheckImageExistsFunc mocks the CheckImageExists method.
 	CheckImageExistsFunc func(ctx context.Context, id uuid.UUID) (bool, error)
 
-	// CheckImageHashExistsFunc mocks the CheckImageHashExists method.
-	CheckImageHashExistsFunc func(ctx context.Context, fileHash []byte) (bool, error)
+	// CheckImageFileExistsFunc mocks the CheckImageFileExists method.
+	CheckImageFileExistsFunc func(ctx context.Context, filename string) (bool, error)
+
+	// CheckVideoExistsFunc mocks the CheckVideoExists method.
+	CheckVideoExistsFunc func(ctx context.Context, id uuid.UUID) (bool, error)
+
+	// CheckVideoFileExistsFunc mocks the CheckVideoFileExists method.
+	CheckVideoFileExistsFunc func(ctx context.Context, filename string) (bool, error)
 
 	// DeleteImageFunc mocks the DeleteImage method.
 	DeleteImageFunc func(ctx context.Context, id uuid.UUID) error
 
 	// DeleteRoleFunc mocks the DeleteRole method.
 	DeleteRoleFunc func(ctx context.Context, id string) error
+
+	// DeleteVideoFunc mocks the DeleteVideo method.
+	DeleteVideoFunc func(ctx context.Context, id uuid.UUID) error
 
 	// GetAllImagesInIDSFunc mocks the GetAllImagesInIDS method.
 	GetAllImagesInIDSFunc func(ctx context.Context, imageIds []uuid.UUID) ([]db.GetAllImagesInIDSRow, error)
@@ -106,8 +136,11 @@ type DBMock struct {
 	// GetAllUsersInIDSFunc mocks the GetAllUsersInIDS method.
 	GetAllUsersInIDSFunc func(ctx context.Context, userIds []uuid.UUID) ([]db.GetAllUsersInIDSRow, error)
 
+	// GetAllVideosInIDSFunc mocks the GetAllVideosInIDS method.
+	GetAllVideosInIDSFunc func(ctx context.Context, videoIds []uuid.UUID) ([]db.Video, error)
+
 	// GetImageByIdFunc mocks the GetImageById method.
-	GetImageByIdFunc func(ctx context.Context, id uuid.UUID) (db.Image, error)
+	GetImageByIdFunc func(ctx context.Context, id uuid.UUID) (db.GetImageByIdRow, error)
 
 	// GetManyImagesFunc mocks the GetManyImages method.
 	GetManyImagesFunc func(ctx context.Context, arg db.GetManyImagesParams) ([]db.GetManyImagesRow, error)
@@ -115,11 +148,17 @@ type DBMock struct {
 	// GetManyUsersFunc mocks the GetManyUsers method.
 	GetManyUsersFunc func(ctx context.Context, arg db.GetManyUsersParams) ([]db.GetManyUsersRow, error)
 
+	// GetManyVideosFunc mocks the GetManyVideos method.
+	GetManyVideosFunc func(ctx context.Context, arg db.GetManyVideosParams) ([]db.Video, error)
+
 	// GetUserByEmailFunc mocks the GetUserByEmail method.
 	GetUserByEmailFunc func(ctx context.Context, email string) (db.GetUserByEmailRow, error)
 
 	// GetUserByIdFunc mocks the GetUserById method.
 	GetUserByIdFunc func(ctx context.Context, userID uuid.UUID) (db.GetUserByIdRow, error)
+
+	// GetVideoByIdFunc mocks the GetVideoById method.
+	GetVideoByIdFunc func(ctx context.Context, id uuid.UUID) (db.Video, error)
 
 	// HardDeleteUserFunc mocks the HardDeleteUser method.
 	HardDeleteUserFunc func(ctx context.Context, userID uuid.UUID) error
@@ -132,6 +171,9 @@ type DBMock struct {
 
 	// InsertOrUpdateUserFunc mocks the InsertOrUpdateUser method.
 	InsertOrUpdateUserFunc func(ctx context.Context, arg db.InsertOrUpdateUserParams) error
+
+	// InsertOrUpdateVideoFunc mocks the InsertOrUpdateVideo method.
+	InsertOrUpdateVideoFunc func(ctx context.Context, arg db.InsertOrUpdateVideoParams) error
 
 	// SoftDeleteUserFunc mocks the SoftDeleteUser method.
 	SoftDeleteUserFunc func(ctx context.Context, userID uuid.UUID) error
@@ -152,12 +194,26 @@ type DBMock struct {
 			// ID is the id argument value.
 			ID uuid.UUID
 		}
-		// CheckImageHashExists holds details about calls to the CheckImageHashExists method.
-		CheckImageHashExists []struct {
+		// CheckImageFileExists holds details about calls to the CheckImageFileExists method.
+		CheckImageFileExists []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
-			// FileHash is the fileHash argument value.
-			FileHash []byte
+			// Filename is the filename argument value.
+			Filename string
+		}
+		// CheckVideoExists holds details about calls to the CheckVideoExists method.
+		CheckVideoExists []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ID is the id argument value.
+			ID uuid.UUID
+		}
+		// CheckVideoFileExists holds details about calls to the CheckVideoFileExists method.
+		CheckVideoFileExists []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Filename is the filename argument value.
+			Filename string
 		}
 		// DeleteImage holds details about calls to the DeleteImage method.
 		DeleteImage []struct {
@@ -172,6 +228,13 @@ type DBMock struct {
 			Ctx context.Context
 			// ID is the id argument value.
 			ID string
+		}
+		// DeleteVideo holds details about calls to the DeleteVideo method.
+		DeleteVideo []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ID is the id argument value.
+			ID uuid.UUID
 		}
 		// GetAllImagesInIDS holds details about calls to the GetAllImagesInIDS method.
 		GetAllImagesInIDS []struct {
@@ -191,6 +254,13 @@ type DBMock struct {
 			Ctx context.Context
 			// UserIds is the userIds argument value.
 			UserIds []uuid.UUID
+		}
+		// GetAllVideosInIDS holds details about calls to the GetAllVideosInIDS method.
+		GetAllVideosInIDS []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// VideoIds is the videoIds argument value.
+			VideoIds []uuid.UUID
 		}
 		// GetImageById holds details about calls to the GetImageById method.
 		GetImageById []struct {
@@ -213,6 +283,13 @@ type DBMock struct {
 			// Arg is the arg argument value.
 			Arg db.GetManyUsersParams
 		}
+		// GetManyVideos holds details about calls to the GetManyVideos method.
+		GetManyVideos []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Arg is the arg argument value.
+			Arg db.GetManyVideosParams
+		}
 		// GetUserByEmail holds details about calls to the GetUserByEmail method.
 		GetUserByEmail []struct {
 			// Ctx is the ctx argument value.
@@ -226,6 +303,13 @@ type DBMock struct {
 			Ctx context.Context
 			// UserID is the userID argument value.
 			UserID uuid.UUID
+		}
+		// GetVideoById holds details about calls to the GetVideoById method.
+		GetVideoById []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ID is the id argument value.
+			ID uuid.UUID
 		}
 		// HardDeleteUser holds details about calls to the HardDeleteUser method.
 		HardDeleteUser []struct {
@@ -255,6 +339,13 @@ type DBMock struct {
 			// Arg is the arg argument value.
 			Arg db.InsertOrUpdateUserParams
 		}
+		// InsertOrUpdateVideo holds details about calls to the InsertOrUpdateVideo method.
+		InsertOrUpdateVideo []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Arg is the arg argument value.
+			Arg db.InsertOrUpdateVideoParams
+		}
 		// SoftDeleteUser holds details about calls to the SoftDeleteUser method.
 		SoftDeleteUser []struct {
 			// Ctx is the ctx argument value.
@@ -265,21 +356,28 @@ type DBMock struct {
 	}
 	lockBeginTx              sync.RWMutex
 	lockCheckImageExists     sync.RWMutex
-	lockCheckImageHashExists sync.RWMutex
+	lockCheckImageFileExists sync.RWMutex
+	lockCheckVideoExists     sync.RWMutex
+	lockCheckVideoFileExists sync.RWMutex
 	lockDeleteImage          sync.RWMutex
 	lockDeleteRole           sync.RWMutex
+	lockDeleteVideo          sync.RWMutex
 	lockGetAllImagesInIDS    sync.RWMutex
 	lockGetAllRoles          sync.RWMutex
 	lockGetAllUsersInIDS     sync.RWMutex
+	lockGetAllVideosInIDS    sync.RWMutex
 	lockGetImageById         sync.RWMutex
 	lockGetManyImages        sync.RWMutex
 	lockGetManyUsers         sync.RWMutex
+	lockGetManyVideos        sync.RWMutex
 	lockGetUserByEmail       sync.RWMutex
 	lockGetUserById          sync.RWMutex
+	lockGetVideoById         sync.RWMutex
 	lockHardDeleteUser       sync.RWMutex
 	lockInsertOrUpdateImage  sync.RWMutex
 	lockInsertOrUpdateRoles  sync.RWMutex
 	lockInsertOrUpdateUser   sync.RWMutex
+	lockInsertOrUpdateVideo  sync.RWMutex
 	lockSoftDeleteUser       sync.RWMutex
 }
 
@@ -355,39 +453,111 @@ func (mock *DBMock) CheckImageExistsCalls() []struct {
 	return calls
 }
 
-// CheckImageHashExists calls CheckImageHashExistsFunc.
-func (mock *DBMock) CheckImageHashExists(ctx context.Context, fileHash []byte) (bool, error) {
-	if mock.CheckImageHashExistsFunc == nil {
-		panic("DBMock.CheckImageHashExistsFunc: method is nil but DB.CheckImageHashExists was just called")
+// CheckImageFileExists calls CheckImageFileExistsFunc.
+func (mock *DBMock) CheckImageFileExists(ctx context.Context, filename string) (bool, error) {
+	if mock.CheckImageFileExistsFunc == nil {
+		panic("DBMock.CheckImageFileExistsFunc: method is nil but DB.CheckImageFileExists was just called")
 	}
 	callInfo := struct {
 		Ctx      context.Context
-		FileHash []byte
+		Filename string
 	}{
 		Ctx:      ctx,
-		FileHash: fileHash,
+		Filename: filename,
 	}
-	mock.lockCheckImageHashExists.Lock()
-	mock.calls.CheckImageHashExists = append(mock.calls.CheckImageHashExists, callInfo)
-	mock.lockCheckImageHashExists.Unlock()
-	return mock.CheckImageHashExistsFunc(ctx, fileHash)
+	mock.lockCheckImageFileExists.Lock()
+	mock.calls.CheckImageFileExists = append(mock.calls.CheckImageFileExists, callInfo)
+	mock.lockCheckImageFileExists.Unlock()
+	return mock.CheckImageFileExistsFunc(ctx, filename)
 }
 
-// CheckImageHashExistsCalls gets all the calls that were made to CheckImageHashExists.
+// CheckImageFileExistsCalls gets all the calls that were made to CheckImageFileExists.
 // Check the length with:
 //
-//	len(mockedDB.CheckImageHashExistsCalls())
-func (mock *DBMock) CheckImageHashExistsCalls() []struct {
+//	len(mockedDB.CheckImageFileExistsCalls())
+func (mock *DBMock) CheckImageFileExistsCalls() []struct {
 	Ctx      context.Context
-	FileHash []byte
+	Filename string
 } {
 	var calls []struct {
 		Ctx      context.Context
-		FileHash []byte
+		Filename string
 	}
-	mock.lockCheckImageHashExists.RLock()
-	calls = mock.calls.CheckImageHashExists
-	mock.lockCheckImageHashExists.RUnlock()
+	mock.lockCheckImageFileExists.RLock()
+	calls = mock.calls.CheckImageFileExists
+	mock.lockCheckImageFileExists.RUnlock()
+	return calls
+}
+
+// CheckVideoExists calls CheckVideoExistsFunc.
+func (mock *DBMock) CheckVideoExists(ctx context.Context, id uuid.UUID) (bool, error) {
+	if mock.CheckVideoExistsFunc == nil {
+		panic("DBMock.CheckVideoExistsFunc: method is nil but DB.CheckVideoExists was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+		ID  uuid.UUID
+	}{
+		Ctx: ctx,
+		ID:  id,
+	}
+	mock.lockCheckVideoExists.Lock()
+	mock.calls.CheckVideoExists = append(mock.calls.CheckVideoExists, callInfo)
+	mock.lockCheckVideoExists.Unlock()
+	return mock.CheckVideoExistsFunc(ctx, id)
+}
+
+// CheckVideoExistsCalls gets all the calls that were made to CheckVideoExists.
+// Check the length with:
+//
+//	len(mockedDB.CheckVideoExistsCalls())
+func (mock *DBMock) CheckVideoExistsCalls() []struct {
+	Ctx context.Context
+	ID  uuid.UUID
+} {
+	var calls []struct {
+		Ctx context.Context
+		ID  uuid.UUID
+	}
+	mock.lockCheckVideoExists.RLock()
+	calls = mock.calls.CheckVideoExists
+	mock.lockCheckVideoExists.RUnlock()
+	return calls
+}
+
+// CheckVideoFileExists calls CheckVideoFileExistsFunc.
+func (mock *DBMock) CheckVideoFileExists(ctx context.Context, filename string) (bool, error) {
+	if mock.CheckVideoFileExistsFunc == nil {
+		panic("DBMock.CheckVideoFileExistsFunc: method is nil but DB.CheckVideoFileExists was just called")
+	}
+	callInfo := struct {
+		Ctx      context.Context
+		Filename string
+	}{
+		Ctx:      ctx,
+		Filename: filename,
+	}
+	mock.lockCheckVideoFileExists.Lock()
+	mock.calls.CheckVideoFileExists = append(mock.calls.CheckVideoFileExists, callInfo)
+	mock.lockCheckVideoFileExists.Unlock()
+	return mock.CheckVideoFileExistsFunc(ctx, filename)
+}
+
+// CheckVideoFileExistsCalls gets all the calls that were made to CheckVideoFileExists.
+// Check the length with:
+//
+//	len(mockedDB.CheckVideoFileExistsCalls())
+func (mock *DBMock) CheckVideoFileExistsCalls() []struct {
+	Ctx      context.Context
+	Filename string
+} {
+	var calls []struct {
+		Ctx      context.Context
+		Filename string
+	}
+	mock.lockCheckVideoFileExists.RLock()
+	calls = mock.calls.CheckVideoFileExists
+	mock.lockCheckVideoFileExists.RUnlock()
 	return calls
 }
 
@@ -460,6 +630,42 @@ func (mock *DBMock) DeleteRoleCalls() []struct {
 	mock.lockDeleteRole.RLock()
 	calls = mock.calls.DeleteRole
 	mock.lockDeleteRole.RUnlock()
+	return calls
+}
+
+// DeleteVideo calls DeleteVideoFunc.
+func (mock *DBMock) DeleteVideo(ctx context.Context, id uuid.UUID) error {
+	if mock.DeleteVideoFunc == nil {
+		panic("DBMock.DeleteVideoFunc: method is nil but DB.DeleteVideo was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+		ID  uuid.UUID
+	}{
+		Ctx: ctx,
+		ID:  id,
+	}
+	mock.lockDeleteVideo.Lock()
+	mock.calls.DeleteVideo = append(mock.calls.DeleteVideo, callInfo)
+	mock.lockDeleteVideo.Unlock()
+	return mock.DeleteVideoFunc(ctx, id)
+}
+
+// DeleteVideoCalls gets all the calls that were made to DeleteVideo.
+// Check the length with:
+//
+//	len(mockedDB.DeleteVideoCalls())
+func (mock *DBMock) DeleteVideoCalls() []struct {
+	Ctx context.Context
+	ID  uuid.UUID
+} {
+	var calls []struct {
+		Ctx context.Context
+		ID  uuid.UUID
+	}
+	mock.lockDeleteVideo.RLock()
+	calls = mock.calls.DeleteVideo
+	mock.lockDeleteVideo.RUnlock()
 	return calls
 }
 
@@ -567,8 +773,44 @@ func (mock *DBMock) GetAllUsersInIDSCalls() []struct {
 	return calls
 }
 
+// GetAllVideosInIDS calls GetAllVideosInIDSFunc.
+func (mock *DBMock) GetAllVideosInIDS(ctx context.Context, videoIds []uuid.UUID) ([]db.Video, error) {
+	if mock.GetAllVideosInIDSFunc == nil {
+		panic("DBMock.GetAllVideosInIDSFunc: method is nil but DB.GetAllVideosInIDS was just called")
+	}
+	callInfo := struct {
+		Ctx      context.Context
+		VideoIds []uuid.UUID
+	}{
+		Ctx:      ctx,
+		VideoIds: videoIds,
+	}
+	mock.lockGetAllVideosInIDS.Lock()
+	mock.calls.GetAllVideosInIDS = append(mock.calls.GetAllVideosInIDS, callInfo)
+	mock.lockGetAllVideosInIDS.Unlock()
+	return mock.GetAllVideosInIDSFunc(ctx, videoIds)
+}
+
+// GetAllVideosInIDSCalls gets all the calls that were made to GetAllVideosInIDS.
+// Check the length with:
+//
+//	len(mockedDB.GetAllVideosInIDSCalls())
+func (mock *DBMock) GetAllVideosInIDSCalls() []struct {
+	Ctx      context.Context
+	VideoIds []uuid.UUID
+} {
+	var calls []struct {
+		Ctx      context.Context
+		VideoIds []uuid.UUID
+	}
+	mock.lockGetAllVideosInIDS.RLock()
+	calls = mock.calls.GetAllVideosInIDS
+	mock.lockGetAllVideosInIDS.RUnlock()
+	return calls
+}
+
 // GetImageById calls GetImageByIdFunc.
-func (mock *DBMock) GetImageById(ctx context.Context, id uuid.UUID) (db.Image, error) {
+func (mock *DBMock) GetImageById(ctx context.Context, id uuid.UUID) (db.GetImageByIdRow, error) {
 	if mock.GetImageByIdFunc == nil {
 		panic("DBMock.GetImageByIdFunc: method is nil but DB.GetImageById was just called")
 	}
@@ -675,6 +917,42 @@ func (mock *DBMock) GetManyUsersCalls() []struct {
 	return calls
 }
 
+// GetManyVideos calls GetManyVideosFunc.
+func (mock *DBMock) GetManyVideos(ctx context.Context, arg db.GetManyVideosParams) ([]db.Video, error) {
+	if mock.GetManyVideosFunc == nil {
+		panic("DBMock.GetManyVideosFunc: method is nil but DB.GetManyVideos was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+		Arg db.GetManyVideosParams
+	}{
+		Ctx: ctx,
+		Arg: arg,
+	}
+	mock.lockGetManyVideos.Lock()
+	mock.calls.GetManyVideos = append(mock.calls.GetManyVideos, callInfo)
+	mock.lockGetManyVideos.Unlock()
+	return mock.GetManyVideosFunc(ctx, arg)
+}
+
+// GetManyVideosCalls gets all the calls that were made to GetManyVideos.
+// Check the length with:
+//
+//	len(mockedDB.GetManyVideosCalls())
+func (mock *DBMock) GetManyVideosCalls() []struct {
+	Ctx context.Context
+	Arg db.GetManyVideosParams
+} {
+	var calls []struct {
+		Ctx context.Context
+		Arg db.GetManyVideosParams
+	}
+	mock.lockGetManyVideos.RLock()
+	calls = mock.calls.GetManyVideos
+	mock.lockGetManyVideos.RUnlock()
+	return calls
+}
+
 // GetUserByEmail calls GetUserByEmailFunc.
 func (mock *DBMock) GetUserByEmail(ctx context.Context, email string) (db.GetUserByEmailRow, error) {
 	if mock.GetUserByEmailFunc == nil {
@@ -744,6 +1022,42 @@ func (mock *DBMock) GetUserByIdCalls() []struct {
 	mock.lockGetUserById.RLock()
 	calls = mock.calls.GetUserById
 	mock.lockGetUserById.RUnlock()
+	return calls
+}
+
+// GetVideoById calls GetVideoByIdFunc.
+func (mock *DBMock) GetVideoById(ctx context.Context, id uuid.UUID) (db.Video, error) {
+	if mock.GetVideoByIdFunc == nil {
+		panic("DBMock.GetVideoByIdFunc: method is nil but DB.GetVideoById was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+		ID  uuid.UUID
+	}{
+		Ctx: ctx,
+		ID:  id,
+	}
+	mock.lockGetVideoById.Lock()
+	mock.calls.GetVideoById = append(mock.calls.GetVideoById, callInfo)
+	mock.lockGetVideoById.Unlock()
+	return mock.GetVideoByIdFunc(ctx, id)
+}
+
+// GetVideoByIdCalls gets all the calls that were made to GetVideoById.
+// Check the length with:
+//
+//	len(mockedDB.GetVideoByIdCalls())
+func (mock *DBMock) GetVideoByIdCalls() []struct {
+	Ctx context.Context
+	ID  uuid.UUID
+} {
+	var calls []struct {
+		Ctx context.Context
+		ID  uuid.UUID
+	}
+	mock.lockGetVideoById.RLock()
+	calls = mock.calls.GetVideoById
+	mock.lockGetVideoById.RUnlock()
 	return calls
 }
 
@@ -891,6 +1205,42 @@ func (mock *DBMock) InsertOrUpdateUserCalls() []struct {
 	return calls
 }
 
+// InsertOrUpdateVideo calls InsertOrUpdateVideoFunc.
+func (mock *DBMock) InsertOrUpdateVideo(ctx context.Context, arg db.InsertOrUpdateVideoParams) error {
+	if mock.InsertOrUpdateVideoFunc == nil {
+		panic("DBMock.InsertOrUpdateVideoFunc: method is nil but DB.InsertOrUpdateVideo was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+		Arg db.InsertOrUpdateVideoParams
+	}{
+		Ctx: ctx,
+		Arg: arg,
+	}
+	mock.lockInsertOrUpdateVideo.Lock()
+	mock.calls.InsertOrUpdateVideo = append(mock.calls.InsertOrUpdateVideo, callInfo)
+	mock.lockInsertOrUpdateVideo.Unlock()
+	return mock.InsertOrUpdateVideoFunc(ctx, arg)
+}
+
+// InsertOrUpdateVideoCalls gets all the calls that were made to InsertOrUpdateVideo.
+// Check the length with:
+//
+//	len(mockedDB.InsertOrUpdateVideoCalls())
+func (mock *DBMock) InsertOrUpdateVideoCalls() []struct {
+	Ctx context.Context
+	Arg db.InsertOrUpdateVideoParams
+} {
+	var calls []struct {
+		Ctx context.Context
+		Arg db.InsertOrUpdateVideoParams
+	}
+	mock.lockInsertOrUpdateVideo.RLock()
+	calls = mock.calls.InsertOrUpdateVideo
+	mock.lockInsertOrUpdateVideo.RUnlock()
+	return calls
+}
+
 // SoftDeleteUser calls SoftDeleteUserFunc.
 func (mock *DBMock) SoftDeleteUser(ctx context.Context, userID uuid.UUID) error {
 	if mock.SoftDeleteUserFunc == nil {
@@ -940,14 +1290,23 @@ var _ db.Querier = &QuerierMock{}
 //			CheckImageExistsFunc: func(ctx context.Context, id uuid.UUID) (bool, error) {
 //				panic("mock out the CheckImageExists method")
 //			},
-//			CheckImageHashExistsFunc: func(ctx context.Context, fileHash []byte) (bool, error) {
-//				panic("mock out the CheckImageHashExists method")
+//			CheckImageFileExistsFunc: func(ctx context.Context, filename string) (bool, error) {
+//				panic("mock out the CheckImageFileExists method")
+//			},
+//			CheckVideoExistsFunc: func(ctx context.Context, id uuid.UUID) (bool, error) {
+//				panic("mock out the CheckVideoExists method")
+//			},
+//			CheckVideoFileExistsFunc: func(ctx context.Context, filename string) (bool, error) {
+//				panic("mock out the CheckVideoFileExists method")
 //			},
 //			DeleteImageFunc: func(ctx context.Context, id uuid.UUID) error {
 //				panic("mock out the DeleteImage method")
 //			},
 //			DeleteRoleFunc: func(ctx context.Context, id string) error {
 //				panic("mock out the DeleteRole method")
+//			},
+//			DeleteVideoFunc: func(ctx context.Context, id uuid.UUID) error {
+//				panic("mock out the DeleteVideo method")
 //			},
 //			GetAllImagesInIDSFunc: func(ctx context.Context, imageIds []uuid.UUID) ([]db.GetAllImagesInIDSRow, error) {
 //				panic("mock out the GetAllImagesInIDS method")
@@ -958,7 +1317,10 @@ var _ db.Querier = &QuerierMock{}
 //			GetAllUsersInIDSFunc: func(ctx context.Context, userIds []uuid.UUID) ([]db.GetAllUsersInIDSRow, error) {
 //				panic("mock out the GetAllUsersInIDS method")
 //			},
-//			GetImageByIdFunc: func(ctx context.Context, id uuid.UUID) (db.Image, error) {
+//			GetAllVideosInIDSFunc: func(ctx context.Context, videoIds []uuid.UUID) ([]db.Video, error) {
+//				panic("mock out the GetAllVideosInIDS method")
+//			},
+//			GetImageByIdFunc: func(ctx context.Context, id uuid.UUID) (db.GetImageByIdRow, error) {
 //				panic("mock out the GetImageById method")
 //			},
 //			GetManyImagesFunc: func(ctx context.Context, arg db.GetManyImagesParams) ([]db.GetManyImagesRow, error) {
@@ -967,11 +1329,17 @@ var _ db.Querier = &QuerierMock{}
 //			GetManyUsersFunc: func(ctx context.Context, arg db.GetManyUsersParams) ([]db.GetManyUsersRow, error) {
 //				panic("mock out the GetManyUsers method")
 //			},
+//			GetManyVideosFunc: func(ctx context.Context, arg db.GetManyVideosParams) ([]db.Video, error) {
+//				panic("mock out the GetManyVideos method")
+//			},
 //			GetUserByEmailFunc: func(ctx context.Context, email string) (db.GetUserByEmailRow, error) {
 //				panic("mock out the GetUserByEmail method")
 //			},
 //			GetUserByIdFunc: func(ctx context.Context, userID uuid.UUID) (db.GetUserByIdRow, error) {
 //				panic("mock out the GetUserById method")
+//			},
+//			GetVideoByIdFunc: func(ctx context.Context, id uuid.UUID) (db.Video, error) {
+//				panic("mock out the GetVideoById method")
 //			},
 //			HardDeleteUserFunc: func(ctx context.Context, userID uuid.UUID) error {
 //				panic("mock out the HardDeleteUser method")
@@ -984,6 +1352,9 @@ var _ db.Querier = &QuerierMock{}
 //			},
 //			InsertOrUpdateUserFunc: func(ctx context.Context, arg db.InsertOrUpdateUserParams) error {
 //				panic("mock out the InsertOrUpdateUser method")
+//			},
+//			InsertOrUpdateVideoFunc: func(ctx context.Context, arg db.InsertOrUpdateVideoParams) error {
+//				panic("mock out the InsertOrUpdateVideo method")
 //			},
 //			SoftDeleteUserFunc: func(ctx context.Context, userID uuid.UUID) error {
 //				panic("mock out the SoftDeleteUser method")
@@ -998,14 +1369,23 @@ type QuerierMock struct {
 	// CheckImageExistsFunc mocks the CheckImageExists method.
 	CheckImageExistsFunc func(ctx context.Context, id uuid.UUID) (bool, error)
 
-	// CheckImageHashExistsFunc mocks the CheckImageHashExists method.
-	CheckImageHashExistsFunc func(ctx context.Context, fileHash []byte) (bool, error)
+	// CheckImageFileExistsFunc mocks the CheckImageFileExists method.
+	CheckImageFileExistsFunc func(ctx context.Context, filename string) (bool, error)
+
+	// CheckVideoExistsFunc mocks the CheckVideoExists method.
+	CheckVideoExistsFunc func(ctx context.Context, id uuid.UUID) (bool, error)
+
+	// CheckVideoFileExistsFunc mocks the CheckVideoFileExists method.
+	CheckVideoFileExistsFunc func(ctx context.Context, filename string) (bool, error)
 
 	// DeleteImageFunc mocks the DeleteImage method.
 	DeleteImageFunc func(ctx context.Context, id uuid.UUID) error
 
 	// DeleteRoleFunc mocks the DeleteRole method.
 	DeleteRoleFunc func(ctx context.Context, id string) error
+
+	// DeleteVideoFunc mocks the DeleteVideo method.
+	DeleteVideoFunc func(ctx context.Context, id uuid.UUID) error
 
 	// GetAllImagesInIDSFunc mocks the GetAllImagesInIDS method.
 	GetAllImagesInIDSFunc func(ctx context.Context, imageIds []uuid.UUID) ([]db.GetAllImagesInIDSRow, error)
@@ -1016,8 +1396,11 @@ type QuerierMock struct {
 	// GetAllUsersInIDSFunc mocks the GetAllUsersInIDS method.
 	GetAllUsersInIDSFunc func(ctx context.Context, userIds []uuid.UUID) ([]db.GetAllUsersInIDSRow, error)
 
+	// GetAllVideosInIDSFunc mocks the GetAllVideosInIDS method.
+	GetAllVideosInIDSFunc func(ctx context.Context, videoIds []uuid.UUID) ([]db.Video, error)
+
 	// GetImageByIdFunc mocks the GetImageById method.
-	GetImageByIdFunc func(ctx context.Context, id uuid.UUID) (db.Image, error)
+	GetImageByIdFunc func(ctx context.Context, id uuid.UUID) (db.GetImageByIdRow, error)
 
 	// GetManyImagesFunc mocks the GetManyImages method.
 	GetManyImagesFunc func(ctx context.Context, arg db.GetManyImagesParams) ([]db.GetManyImagesRow, error)
@@ -1025,11 +1408,17 @@ type QuerierMock struct {
 	// GetManyUsersFunc mocks the GetManyUsers method.
 	GetManyUsersFunc func(ctx context.Context, arg db.GetManyUsersParams) ([]db.GetManyUsersRow, error)
 
+	// GetManyVideosFunc mocks the GetManyVideos method.
+	GetManyVideosFunc func(ctx context.Context, arg db.GetManyVideosParams) ([]db.Video, error)
+
 	// GetUserByEmailFunc mocks the GetUserByEmail method.
 	GetUserByEmailFunc func(ctx context.Context, email string) (db.GetUserByEmailRow, error)
 
 	// GetUserByIdFunc mocks the GetUserById method.
 	GetUserByIdFunc func(ctx context.Context, userID uuid.UUID) (db.GetUserByIdRow, error)
+
+	// GetVideoByIdFunc mocks the GetVideoById method.
+	GetVideoByIdFunc func(ctx context.Context, id uuid.UUID) (db.Video, error)
 
 	// HardDeleteUserFunc mocks the HardDeleteUser method.
 	HardDeleteUserFunc func(ctx context.Context, userID uuid.UUID) error
@@ -1043,6 +1432,9 @@ type QuerierMock struct {
 	// InsertOrUpdateUserFunc mocks the InsertOrUpdateUser method.
 	InsertOrUpdateUserFunc func(ctx context.Context, arg db.InsertOrUpdateUserParams) error
 
+	// InsertOrUpdateVideoFunc mocks the InsertOrUpdateVideo method.
+	InsertOrUpdateVideoFunc func(ctx context.Context, arg db.InsertOrUpdateVideoParams) error
+
 	// SoftDeleteUserFunc mocks the SoftDeleteUser method.
 	SoftDeleteUserFunc func(ctx context.Context, userID uuid.UUID) error
 
@@ -1055,12 +1447,26 @@ type QuerierMock struct {
 			// ID is the id argument value.
 			ID uuid.UUID
 		}
-		// CheckImageHashExists holds details about calls to the CheckImageHashExists method.
-		CheckImageHashExists []struct {
+		// CheckImageFileExists holds details about calls to the CheckImageFileExists method.
+		CheckImageFileExists []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
-			// FileHash is the fileHash argument value.
-			FileHash []byte
+			// Filename is the filename argument value.
+			Filename string
+		}
+		// CheckVideoExists holds details about calls to the CheckVideoExists method.
+		CheckVideoExists []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ID is the id argument value.
+			ID uuid.UUID
+		}
+		// CheckVideoFileExists holds details about calls to the CheckVideoFileExists method.
+		CheckVideoFileExists []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Filename is the filename argument value.
+			Filename string
 		}
 		// DeleteImage holds details about calls to the DeleteImage method.
 		DeleteImage []struct {
@@ -1075,6 +1481,13 @@ type QuerierMock struct {
 			Ctx context.Context
 			// ID is the id argument value.
 			ID string
+		}
+		// DeleteVideo holds details about calls to the DeleteVideo method.
+		DeleteVideo []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ID is the id argument value.
+			ID uuid.UUID
 		}
 		// GetAllImagesInIDS holds details about calls to the GetAllImagesInIDS method.
 		GetAllImagesInIDS []struct {
@@ -1094,6 +1507,13 @@ type QuerierMock struct {
 			Ctx context.Context
 			// UserIds is the userIds argument value.
 			UserIds []uuid.UUID
+		}
+		// GetAllVideosInIDS holds details about calls to the GetAllVideosInIDS method.
+		GetAllVideosInIDS []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// VideoIds is the videoIds argument value.
+			VideoIds []uuid.UUID
 		}
 		// GetImageById holds details about calls to the GetImageById method.
 		GetImageById []struct {
@@ -1116,6 +1536,13 @@ type QuerierMock struct {
 			// Arg is the arg argument value.
 			Arg db.GetManyUsersParams
 		}
+		// GetManyVideos holds details about calls to the GetManyVideos method.
+		GetManyVideos []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Arg is the arg argument value.
+			Arg db.GetManyVideosParams
+		}
 		// GetUserByEmail holds details about calls to the GetUserByEmail method.
 		GetUserByEmail []struct {
 			// Ctx is the ctx argument value.
@@ -1129,6 +1556,13 @@ type QuerierMock struct {
 			Ctx context.Context
 			// UserID is the userID argument value.
 			UserID uuid.UUID
+		}
+		// GetVideoById holds details about calls to the GetVideoById method.
+		GetVideoById []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ID is the id argument value.
+			ID uuid.UUID
 		}
 		// HardDeleteUser holds details about calls to the HardDeleteUser method.
 		HardDeleteUser []struct {
@@ -1158,6 +1592,13 @@ type QuerierMock struct {
 			// Arg is the arg argument value.
 			Arg db.InsertOrUpdateUserParams
 		}
+		// InsertOrUpdateVideo holds details about calls to the InsertOrUpdateVideo method.
+		InsertOrUpdateVideo []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Arg is the arg argument value.
+			Arg db.InsertOrUpdateVideoParams
+		}
 		// SoftDeleteUser holds details about calls to the SoftDeleteUser method.
 		SoftDeleteUser []struct {
 			// Ctx is the ctx argument value.
@@ -1167,21 +1608,28 @@ type QuerierMock struct {
 		}
 	}
 	lockCheckImageExists     sync.RWMutex
-	lockCheckImageHashExists sync.RWMutex
+	lockCheckImageFileExists sync.RWMutex
+	lockCheckVideoExists     sync.RWMutex
+	lockCheckVideoFileExists sync.RWMutex
 	lockDeleteImage          sync.RWMutex
 	lockDeleteRole           sync.RWMutex
+	lockDeleteVideo          sync.RWMutex
 	lockGetAllImagesInIDS    sync.RWMutex
 	lockGetAllRoles          sync.RWMutex
 	lockGetAllUsersInIDS     sync.RWMutex
+	lockGetAllVideosInIDS    sync.RWMutex
 	lockGetImageById         sync.RWMutex
 	lockGetManyImages        sync.RWMutex
 	lockGetManyUsers         sync.RWMutex
+	lockGetManyVideos        sync.RWMutex
 	lockGetUserByEmail       sync.RWMutex
 	lockGetUserById          sync.RWMutex
+	lockGetVideoById         sync.RWMutex
 	lockHardDeleteUser       sync.RWMutex
 	lockInsertOrUpdateImage  sync.RWMutex
 	lockInsertOrUpdateRoles  sync.RWMutex
 	lockInsertOrUpdateUser   sync.RWMutex
+	lockInsertOrUpdateVideo  sync.RWMutex
 	lockSoftDeleteUser       sync.RWMutex
 }
 
@@ -1221,39 +1669,111 @@ func (mock *QuerierMock) CheckImageExistsCalls() []struct {
 	return calls
 }
 
-// CheckImageHashExists calls CheckImageHashExistsFunc.
-func (mock *QuerierMock) CheckImageHashExists(ctx context.Context, fileHash []byte) (bool, error) {
-	if mock.CheckImageHashExistsFunc == nil {
-		panic("QuerierMock.CheckImageHashExistsFunc: method is nil but Querier.CheckImageHashExists was just called")
+// CheckImageFileExists calls CheckImageFileExistsFunc.
+func (mock *QuerierMock) CheckImageFileExists(ctx context.Context, filename string) (bool, error) {
+	if mock.CheckImageFileExistsFunc == nil {
+		panic("QuerierMock.CheckImageFileExistsFunc: method is nil but Querier.CheckImageFileExists was just called")
 	}
 	callInfo := struct {
 		Ctx      context.Context
-		FileHash []byte
+		Filename string
 	}{
 		Ctx:      ctx,
-		FileHash: fileHash,
+		Filename: filename,
 	}
-	mock.lockCheckImageHashExists.Lock()
-	mock.calls.CheckImageHashExists = append(mock.calls.CheckImageHashExists, callInfo)
-	mock.lockCheckImageHashExists.Unlock()
-	return mock.CheckImageHashExistsFunc(ctx, fileHash)
+	mock.lockCheckImageFileExists.Lock()
+	mock.calls.CheckImageFileExists = append(mock.calls.CheckImageFileExists, callInfo)
+	mock.lockCheckImageFileExists.Unlock()
+	return mock.CheckImageFileExistsFunc(ctx, filename)
 }
 
-// CheckImageHashExistsCalls gets all the calls that were made to CheckImageHashExists.
+// CheckImageFileExistsCalls gets all the calls that were made to CheckImageFileExists.
 // Check the length with:
 //
-//	len(mockedQuerier.CheckImageHashExistsCalls())
-func (mock *QuerierMock) CheckImageHashExistsCalls() []struct {
+//	len(mockedQuerier.CheckImageFileExistsCalls())
+func (mock *QuerierMock) CheckImageFileExistsCalls() []struct {
 	Ctx      context.Context
-	FileHash []byte
+	Filename string
 } {
 	var calls []struct {
 		Ctx      context.Context
-		FileHash []byte
+		Filename string
 	}
-	mock.lockCheckImageHashExists.RLock()
-	calls = mock.calls.CheckImageHashExists
-	mock.lockCheckImageHashExists.RUnlock()
+	mock.lockCheckImageFileExists.RLock()
+	calls = mock.calls.CheckImageFileExists
+	mock.lockCheckImageFileExists.RUnlock()
+	return calls
+}
+
+// CheckVideoExists calls CheckVideoExistsFunc.
+func (mock *QuerierMock) CheckVideoExists(ctx context.Context, id uuid.UUID) (bool, error) {
+	if mock.CheckVideoExistsFunc == nil {
+		panic("QuerierMock.CheckVideoExistsFunc: method is nil but Querier.CheckVideoExists was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+		ID  uuid.UUID
+	}{
+		Ctx: ctx,
+		ID:  id,
+	}
+	mock.lockCheckVideoExists.Lock()
+	mock.calls.CheckVideoExists = append(mock.calls.CheckVideoExists, callInfo)
+	mock.lockCheckVideoExists.Unlock()
+	return mock.CheckVideoExistsFunc(ctx, id)
+}
+
+// CheckVideoExistsCalls gets all the calls that were made to CheckVideoExists.
+// Check the length with:
+//
+//	len(mockedQuerier.CheckVideoExistsCalls())
+func (mock *QuerierMock) CheckVideoExistsCalls() []struct {
+	Ctx context.Context
+	ID  uuid.UUID
+} {
+	var calls []struct {
+		Ctx context.Context
+		ID  uuid.UUID
+	}
+	mock.lockCheckVideoExists.RLock()
+	calls = mock.calls.CheckVideoExists
+	mock.lockCheckVideoExists.RUnlock()
+	return calls
+}
+
+// CheckVideoFileExists calls CheckVideoFileExistsFunc.
+func (mock *QuerierMock) CheckVideoFileExists(ctx context.Context, filename string) (bool, error) {
+	if mock.CheckVideoFileExistsFunc == nil {
+		panic("QuerierMock.CheckVideoFileExistsFunc: method is nil but Querier.CheckVideoFileExists was just called")
+	}
+	callInfo := struct {
+		Ctx      context.Context
+		Filename string
+	}{
+		Ctx:      ctx,
+		Filename: filename,
+	}
+	mock.lockCheckVideoFileExists.Lock()
+	mock.calls.CheckVideoFileExists = append(mock.calls.CheckVideoFileExists, callInfo)
+	mock.lockCheckVideoFileExists.Unlock()
+	return mock.CheckVideoFileExistsFunc(ctx, filename)
+}
+
+// CheckVideoFileExistsCalls gets all the calls that were made to CheckVideoFileExists.
+// Check the length with:
+//
+//	len(mockedQuerier.CheckVideoFileExistsCalls())
+func (mock *QuerierMock) CheckVideoFileExistsCalls() []struct {
+	Ctx      context.Context
+	Filename string
+} {
+	var calls []struct {
+		Ctx      context.Context
+		Filename string
+	}
+	mock.lockCheckVideoFileExists.RLock()
+	calls = mock.calls.CheckVideoFileExists
+	mock.lockCheckVideoFileExists.RUnlock()
 	return calls
 }
 
@@ -1326,6 +1846,42 @@ func (mock *QuerierMock) DeleteRoleCalls() []struct {
 	mock.lockDeleteRole.RLock()
 	calls = mock.calls.DeleteRole
 	mock.lockDeleteRole.RUnlock()
+	return calls
+}
+
+// DeleteVideo calls DeleteVideoFunc.
+func (mock *QuerierMock) DeleteVideo(ctx context.Context, id uuid.UUID) error {
+	if mock.DeleteVideoFunc == nil {
+		panic("QuerierMock.DeleteVideoFunc: method is nil but Querier.DeleteVideo was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+		ID  uuid.UUID
+	}{
+		Ctx: ctx,
+		ID:  id,
+	}
+	mock.lockDeleteVideo.Lock()
+	mock.calls.DeleteVideo = append(mock.calls.DeleteVideo, callInfo)
+	mock.lockDeleteVideo.Unlock()
+	return mock.DeleteVideoFunc(ctx, id)
+}
+
+// DeleteVideoCalls gets all the calls that were made to DeleteVideo.
+// Check the length with:
+//
+//	len(mockedQuerier.DeleteVideoCalls())
+func (mock *QuerierMock) DeleteVideoCalls() []struct {
+	Ctx context.Context
+	ID  uuid.UUID
+} {
+	var calls []struct {
+		Ctx context.Context
+		ID  uuid.UUID
+	}
+	mock.lockDeleteVideo.RLock()
+	calls = mock.calls.DeleteVideo
+	mock.lockDeleteVideo.RUnlock()
 	return calls
 }
 
@@ -1433,8 +1989,44 @@ func (mock *QuerierMock) GetAllUsersInIDSCalls() []struct {
 	return calls
 }
 
+// GetAllVideosInIDS calls GetAllVideosInIDSFunc.
+func (mock *QuerierMock) GetAllVideosInIDS(ctx context.Context, videoIds []uuid.UUID) ([]db.Video, error) {
+	if mock.GetAllVideosInIDSFunc == nil {
+		panic("QuerierMock.GetAllVideosInIDSFunc: method is nil but Querier.GetAllVideosInIDS was just called")
+	}
+	callInfo := struct {
+		Ctx      context.Context
+		VideoIds []uuid.UUID
+	}{
+		Ctx:      ctx,
+		VideoIds: videoIds,
+	}
+	mock.lockGetAllVideosInIDS.Lock()
+	mock.calls.GetAllVideosInIDS = append(mock.calls.GetAllVideosInIDS, callInfo)
+	mock.lockGetAllVideosInIDS.Unlock()
+	return mock.GetAllVideosInIDSFunc(ctx, videoIds)
+}
+
+// GetAllVideosInIDSCalls gets all the calls that were made to GetAllVideosInIDS.
+// Check the length with:
+//
+//	len(mockedQuerier.GetAllVideosInIDSCalls())
+func (mock *QuerierMock) GetAllVideosInIDSCalls() []struct {
+	Ctx      context.Context
+	VideoIds []uuid.UUID
+} {
+	var calls []struct {
+		Ctx      context.Context
+		VideoIds []uuid.UUID
+	}
+	mock.lockGetAllVideosInIDS.RLock()
+	calls = mock.calls.GetAllVideosInIDS
+	mock.lockGetAllVideosInIDS.RUnlock()
+	return calls
+}
+
 // GetImageById calls GetImageByIdFunc.
-func (mock *QuerierMock) GetImageById(ctx context.Context, id uuid.UUID) (db.Image, error) {
+func (mock *QuerierMock) GetImageById(ctx context.Context, id uuid.UUID) (db.GetImageByIdRow, error) {
 	if mock.GetImageByIdFunc == nil {
 		panic("QuerierMock.GetImageByIdFunc: method is nil but Querier.GetImageById was just called")
 	}
@@ -1541,6 +2133,42 @@ func (mock *QuerierMock) GetManyUsersCalls() []struct {
 	return calls
 }
 
+// GetManyVideos calls GetManyVideosFunc.
+func (mock *QuerierMock) GetManyVideos(ctx context.Context, arg db.GetManyVideosParams) ([]db.Video, error) {
+	if mock.GetManyVideosFunc == nil {
+		panic("QuerierMock.GetManyVideosFunc: method is nil but Querier.GetManyVideos was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+		Arg db.GetManyVideosParams
+	}{
+		Ctx: ctx,
+		Arg: arg,
+	}
+	mock.lockGetManyVideos.Lock()
+	mock.calls.GetManyVideos = append(mock.calls.GetManyVideos, callInfo)
+	mock.lockGetManyVideos.Unlock()
+	return mock.GetManyVideosFunc(ctx, arg)
+}
+
+// GetManyVideosCalls gets all the calls that were made to GetManyVideos.
+// Check the length with:
+//
+//	len(mockedQuerier.GetManyVideosCalls())
+func (mock *QuerierMock) GetManyVideosCalls() []struct {
+	Ctx context.Context
+	Arg db.GetManyVideosParams
+} {
+	var calls []struct {
+		Ctx context.Context
+		Arg db.GetManyVideosParams
+	}
+	mock.lockGetManyVideos.RLock()
+	calls = mock.calls.GetManyVideos
+	mock.lockGetManyVideos.RUnlock()
+	return calls
+}
+
 // GetUserByEmail calls GetUserByEmailFunc.
 func (mock *QuerierMock) GetUserByEmail(ctx context.Context, email string) (db.GetUserByEmailRow, error) {
 	if mock.GetUserByEmailFunc == nil {
@@ -1610,6 +2238,42 @@ func (mock *QuerierMock) GetUserByIdCalls() []struct {
 	mock.lockGetUserById.RLock()
 	calls = mock.calls.GetUserById
 	mock.lockGetUserById.RUnlock()
+	return calls
+}
+
+// GetVideoById calls GetVideoByIdFunc.
+func (mock *QuerierMock) GetVideoById(ctx context.Context, id uuid.UUID) (db.Video, error) {
+	if mock.GetVideoByIdFunc == nil {
+		panic("QuerierMock.GetVideoByIdFunc: method is nil but Querier.GetVideoById was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+		ID  uuid.UUID
+	}{
+		Ctx: ctx,
+		ID:  id,
+	}
+	mock.lockGetVideoById.Lock()
+	mock.calls.GetVideoById = append(mock.calls.GetVideoById, callInfo)
+	mock.lockGetVideoById.Unlock()
+	return mock.GetVideoByIdFunc(ctx, id)
+}
+
+// GetVideoByIdCalls gets all the calls that were made to GetVideoById.
+// Check the length with:
+//
+//	len(mockedQuerier.GetVideoByIdCalls())
+func (mock *QuerierMock) GetVideoByIdCalls() []struct {
+	Ctx context.Context
+	ID  uuid.UUID
+} {
+	var calls []struct {
+		Ctx context.Context
+		ID  uuid.UUID
+	}
+	mock.lockGetVideoById.RLock()
+	calls = mock.calls.GetVideoById
+	mock.lockGetVideoById.RUnlock()
 	return calls
 }
 
@@ -1757,6 +2421,42 @@ func (mock *QuerierMock) InsertOrUpdateUserCalls() []struct {
 	return calls
 }
 
+// InsertOrUpdateVideo calls InsertOrUpdateVideoFunc.
+func (mock *QuerierMock) InsertOrUpdateVideo(ctx context.Context, arg db.InsertOrUpdateVideoParams) error {
+	if mock.InsertOrUpdateVideoFunc == nil {
+		panic("QuerierMock.InsertOrUpdateVideoFunc: method is nil but Querier.InsertOrUpdateVideo was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+		Arg db.InsertOrUpdateVideoParams
+	}{
+		Ctx: ctx,
+		Arg: arg,
+	}
+	mock.lockInsertOrUpdateVideo.Lock()
+	mock.calls.InsertOrUpdateVideo = append(mock.calls.InsertOrUpdateVideo, callInfo)
+	mock.lockInsertOrUpdateVideo.Unlock()
+	return mock.InsertOrUpdateVideoFunc(ctx, arg)
+}
+
+// InsertOrUpdateVideoCalls gets all the calls that were made to InsertOrUpdateVideo.
+// Check the length with:
+//
+//	len(mockedQuerier.InsertOrUpdateVideoCalls())
+func (mock *QuerierMock) InsertOrUpdateVideoCalls() []struct {
+	Ctx context.Context
+	Arg db.InsertOrUpdateVideoParams
+} {
+	var calls []struct {
+		Ctx context.Context
+		Arg db.InsertOrUpdateVideoParams
+	}
+	mock.lockInsertOrUpdateVideo.RLock()
+	calls = mock.calls.InsertOrUpdateVideo
+	mock.lockInsertOrUpdateVideo.RUnlock()
+	return calls
+}
+
 // SoftDeleteUser calls SoftDeleteUserFunc.
 func (mock *QuerierMock) SoftDeleteUser(ctx context.Context, userID uuid.UUID) error {
 	if mock.SoftDeleteUserFunc == nil {
@@ -1806,8 +2506,14 @@ var _ db.Transactioner = &TransactionerMock{}
 //			CheckImageExistsFunc: func(ctx context.Context, id uuid.UUID) (bool, error) {
 //				panic("mock out the CheckImageExists method")
 //			},
-//			CheckImageHashExistsFunc: func(ctx context.Context, fileHash []byte) (bool, error) {
-//				panic("mock out the CheckImageHashExists method")
+//			CheckImageFileExistsFunc: func(ctx context.Context, filename string) (bool, error) {
+//				panic("mock out the CheckImageFileExists method")
+//			},
+//			CheckVideoExistsFunc: func(ctx context.Context, id uuid.UUID) (bool, error) {
+//				panic("mock out the CheckVideoExists method")
+//			},
+//			CheckVideoFileExistsFunc: func(ctx context.Context, filename string) (bool, error) {
+//				panic("mock out the CheckVideoFileExists method")
 //			},
 //			CommitFunc: func(ctx context.Context) error {
 //				panic("mock out the Commit method")
@@ -1818,6 +2524,9 @@ var _ db.Transactioner = &TransactionerMock{}
 //			DeleteRoleFunc: func(ctx context.Context, id string) error {
 //				panic("mock out the DeleteRole method")
 //			},
+//			DeleteVideoFunc: func(ctx context.Context, id uuid.UUID) error {
+//				panic("mock out the DeleteVideo method")
+//			},
 //			GetAllImagesInIDSFunc: func(ctx context.Context, imageIds []uuid.UUID) ([]db.GetAllImagesInIDSRow, error) {
 //				panic("mock out the GetAllImagesInIDS method")
 //			},
@@ -1827,7 +2536,10 @@ var _ db.Transactioner = &TransactionerMock{}
 //			GetAllUsersInIDSFunc: func(ctx context.Context, userIds []uuid.UUID) ([]db.GetAllUsersInIDSRow, error) {
 //				panic("mock out the GetAllUsersInIDS method")
 //			},
-//			GetImageByIdFunc: func(ctx context.Context, id uuid.UUID) (db.Image, error) {
+//			GetAllVideosInIDSFunc: func(ctx context.Context, videoIds []uuid.UUID) ([]db.Video, error) {
+//				panic("mock out the GetAllVideosInIDS method")
+//			},
+//			GetImageByIdFunc: func(ctx context.Context, id uuid.UUID) (db.GetImageByIdRow, error) {
 //				panic("mock out the GetImageById method")
 //			},
 //			GetManyImagesFunc: func(ctx context.Context, arg db.GetManyImagesParams) ([]db.GetManyImagesRow, error) {
@@ -1836,11 +2548,17 @@ var _ db.Transactioner = &TransactionerMock{}
 //			GetManyUsersFunc: func(ctx context.Context, arg db.GetManyUsersParams) ([]db.GetManyUsersRow, error) {
 //				panic("mock out the GetManyUsers method")
 //			},
+//			GetManyVideosFunc: func(ctx context.Context, arg db.GetManyVideosParams) ([]db.Video, error) {
+//				panic("mock out the GetManyVideos method")
+//			},
 //			GetUserByEmailFunc: func(ctx context.Context, email string) (db.GetUserByEmailRow, error) {
 //				panic("mock out the GetUserByEmail method")
 //			},
 //			GetUserByIdFunc: func(ctx context.Context, userID uuid.UUID) (db.GetUserByIdRow, error) {
 //				panic("mock out the GetUserById method")
+//			},
+//			GetVideoByIdFunc: func(ctx context.Context, id uuid.UUID) (db.Video, error) {
+//				panic("mock out the GetVideoById method")
 //			},
 //			HardDeleteUserFunc: func(ctx context.Context, userID uuid.UUID) error {
 //				panic("mock out the HardDeleteUser method")
@@ -1853,6 +2571,9 @@ var _ db.Transactioner = &TransactionerMock{}
 //			},
 //			InsertOrUpdateUserFunc: func(ctx context.Context, arg db.InsertOrUpdateUserParams) error {
 //				panic("mock out the InsertOrUpdateUser method")
+//			},
+//			InsertOrUpdateVideoFunc: func(ctx context.Context, arg db.InsertOrUpdateVideoParams) error {
+//				panic("mock out the InsertOrUpdateVideo method")
 //			},
 //			RollbackFunc: func(ctx context.Context) error {
 //				panic("mock out the Rollback method")
@@ -1870,8 +2591,14 @@ type TransactionerMock struct {
 	// CheckImageExistsFunc mocks the CheckImageExists method.
 	CheckImageExistsFunc func(ctx context.Context, id uuid.UUID) (bool, error)
 
-	// CheckImageHashExistsFunc mocks the CheckImageHashExists method.
-	CheckImageHashExistsFunc func(ctx context.Context, fileHash []byte) (bool, error)
+	// CheckImageFileExistsFunc mocks the CheckImageFileExists method.
+	CheckImageFileExistsFunc func(ctx context.Context, filename string) (bool, error)
+
+	// CheckVideoExistsFunc mocks the CheckVideoExists method.
+	CheckVideoExistsFunc func(ctx context.Context, id uuid.UUID) (bool, error)
+
+	// CheckVideoFileExistsFunc mocks the CheckVideoFileExists method.
+	CheckVideoFileExistsFunc func(ctx context.Context, filename string) (bool, error)
 
 	// CommitFunc mocks the Commit method.
 	CommitFunc func(ctx context.Context) error
@@ -1882,6 +2609,9 @@ type TransactionerMock struct {
 	// DeleteRoleFunc mocks the DeleteRole method.
 	DeleteRoleFunc func(ctx context.Context, id string) error
 
+	// DeleteVideoFunc mocks the DeleteVideo method.
+	DeleteVideoFunc func(ctx context.Context, id uuid.UUID) error
+
 	// GetAllImagesInIDSFunc mocks the GetAllImagesInIDS method.
 	GetAllImagesInIDSFunc func(ctx context.Context, imageIds []uuid.UUID) ([]db.GetAllImagesInIDSRow, error)
 
@@ -1891,8 +2621,11 @@ type TransactionerMock struct {
 	// GetAllUsersInIDSFunc mocks the GetAllUsersInIDS method.
 	GetAllUsersInIDSFunc func(ctx context.Context, userIds []uuid.UUID) ([]db.GetAllUsersInIDSRow, error)
 
+	// GetAllVideosInIDSFunc mocks the GetAllVideosInIDS method.
+	GetAllVideosInIDSFunc func(ctx context.Context, videoIds []uuid.UUID) ([]db.Video, error)
+
 	// GetImageByIdFunc mocks the GetImageById method.
-	GetImageByIdFunc func(ctx context.Context, id uuid.UUID) (db.Image, error)
+	GetImageByIdFunc func(ctx context.Context, id uuid.UUID) (db.GetImageByIdRow, error)
 
 	// GetManyImagesFunc mocks the GetManyImages method.
 	GetManyImagesFunc func(ctx context.Context, arg db.GetManyImagesParams) ([]db.GetManyImagesRow, error)
@@ -1900,11 +2633,17 @@ type TransactionerMock struct {
 	// GetManyUsersFunc mocks the GetManyUsers method.
 	GetManyUsersFunc func(ctx context.Context, arg db.GetManyUsersParams) ([]db.GetManyUsersRow, error)
 
+	// GetManyVideosFunc mocks the GetManyVideos method.
+	GetManyVideosFunc func(ctx context.Context, arg db.GetManyVideosParams) ([]db.Video, error)
+
 	// GetUserByEmailFunc mocks the GetUserByEmail method.
 	GetUserByEmailFunc func(ctx context.Context, email string) (db.GetUserByEmailRow, error)
 
 	// GetUserByIdFunc mocks the GetUserById method.
 	GetUserByIdFunc func(ctx context.Context, userID uuid.UUID) (db.GetUserByIdRow, error)
+
+	// GetVideoByIdFunc mocks the GetVideoById method.
+	GetVideoByIdFunc func(ctx context.Context, id uuid.UUID) (db.Video, error)
 
 	// HardDeleteUserFunc mocks the HardDeleteUser method.
 	HardDeleteUserFunc func(ctx context.Context, userID uuid.UUID) error
@@ -1917,6 +2656,9 @@ type TransactionerMock struct {
 
 	// InsertOrUpdateUserFunc mocks the InsertOrUpdateUser method.
 	InsertOrUpdateUserFunc func(ctx context.Context, arg db.InsertOrUpdateUserParams) error
+
+	// InsertOrUpdateVideoFunc mocks the InsertOrUpdateVideo method.
+	InsertOrUpdateVideoFunc func(ctx context.Context, arg db.InsertOrUpdateVideoParams) error
 
 	// RollbackFunc mocks the Rollback method.
 	RollbackFunc func(ctx context.Context) error
@@ -1933,12 +2675,26 @@ type TransactionerMock struct {
 			// ID is the id argument value.
 			ID uuid.UUID
 		}
-		// CheckImageHashExists holds details about calls to the CheckImageHashExists method.
-		CheckImageHashExists []struct {
+		// CheckImageFileExists holds details about calls to the CheckImageFileExists method.
+		CheckImageFileExists []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
-			// FileHash is the fileHash argument value.
-			FileHash []byte
+			// Filename is the filename argument value.
+			Filename string
+		}
+		// CheckVideoExists holds details about calls to the CheckVideoExists method.
+		CheckVideoExists []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ID is the id argument value.
+			ID uuid.UUID
+		}
+		// CheckVideoFileExists holds details about calls to the CheckVideoFileExists method.
+		CheckVideoFileExists []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Filename is the filename argument value.
+			Filename string
 		}
 		// Commit holds details about calls to the Commit method.
 		Commit []struct {
@@ -1959,6 +2715,13 @@ type TransactionerMock struct {
 			// ID is the id argument value.
 			ID string
 		}
+		// DeleteVideo holds details about calls to the DeleteVideo method.
+		DeleteVideo []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ID is the id argument value.
+			ID uuid.UUID
+		}
 		// GetAllImagesInIDS holds details about calls to the GetAllImagesInIDS method.
 		GetAllImagesInIDS []struct {
 			// Ctx is the ctx argument value.
@@ -1977,6 +2740,13 @@ type TransactionerMock struct {
 			Ctx context.Context
 			// UserIds is the userIds argument value.
 			UserIds []uuid.UUID
+		}
+		// GetAllVideosInIDS holds details about calls to the GetAllVideosInIDS method.
+		GetAllVideosInIDS []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// VideoIds is the videoIds argument value.
+			VideoIds []uuid.UUID
 		}
 		// GetImageById holds details about calls to the GetImageById method.
 		GetImageById []struct {
@@ -1999,6 +2769,13 @@ type TransactionerMock struct {
 			// Arg is the arg argument value.
 			Arg db.GetManyUsersParams
 		}
+		// GetManyVideos holds details about calls to the GetManyVideos method.
+		GetManyVideos []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Arg is the arg argument value.
+			Arg db.GetManyVideosParams
+		}
 		// GetUserByEmail holds details about calls to the GetUserByEmail method.
 		GetUserByEmail []struct {
 			// Ctx is the ctx argument value.
@@ -2012,6 +2789,13 @@ type TransactionerMock struct {
 			Ctx context.Context
 			// UserID is the userID argument value.
 			UserID uuid.UUID
+		}
+		// GetVideoById holds details about calls to the GetVideoById method.
+		GetVideoById []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ID is the id argument value.
+			ID uuid.UUID
 		}
 		// HardDeleteUser holds details about calls to the HardDeleteUser method.
 		HardDeleteUser []struct {
@@ -2041,6 +2825,13 @@ type TransactionerMock struct {
 			// Arg is the arg argument value.
 			Arg db.InsertOrUpdateUserParams
 		}
+		// InsertOrUpdateVideo holds details about calls to the InsertOrUpdateVideo method.
+		InsertOrUpdateVideo []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Arg is the arg argument value.
+			Arg db.InsertOrUpdateVideoParams
+		}
 		// Rollback holds details about calls to the Rollback method.
 		Rollback []struct {
 			// Ctx is the ctx argument value.
@@ -2055,22 +2846,29 @@ type TransactionerMock struct {
 		}
 	}
 	lockCheckImageExists     sync.RWMutex
-	lockCheckImageHashExists sync.RWMutex
+	lockCheckImageFileExists sync.RWMutex
+	lockCheckVideoExists     sync.RWMutex
+	lockCheckVideoFileExists sync.RWMutex
 	lockCommit               sync.RWMutex
 	lockDeleteImage          sync.RWMutex
 	lockDeleteRole           sync.RWMutex
+	lockDeleteVideo          sync.RWMutex
 	lockGetAllImagesInIDS    sync.RWMutex
 	lockGetAllRoles          sync.RWMutex
 	lockGetAllUsersInIDS     sync.RWMutex
+	lockGetAllVideosInIDS    sync.RWMutex
 	lockGetImageById         sync.RWMutex
 	lockGetManyImages        sync.RWMutex
 	lockGetManyUsers         sync.RWMutex
+	lockGetManyVideos        sync.RWMutex
 	lockGetUserByEmail       sync.RWMutex
 	lockGetUserById          sync.RWMutex
+	lockGetVideoById         sync.RWMutex
 	lockHardDeleteUser       sync.RWMutex
 	lockInsertOrUpdateImage  sync.RWMutex
 	lockInsertOrUpdateRoles  sync.RWMutex
 	lockInsertOrUpdateUser   sync.RWMutex
+	lockInsertOrUpdateVideo  sync.RWMutex
 	lockRollback             sync.RWMutex
 	lockSoftDeleteUser       sync.RWMutex
 }
@@ -2111,39 +2909,111 @@ func (mock *TransactionerMock) CheckImageExistsCalls() []struct {
 	return calls
 }
 
-// CheckImageHashExists calls CheckImageHashExistsFunc.
-func (mock *TransactionerMock) CheckImageHashExists(ctx context.Context, fileHash []byte) (bool, error) {
-	if mock.CheckImageHashExistsFunc == nil {
-		panic("TransactionerMock.CheckImageHashExistsFunc: method is nil but Transactioner.CheckImageHashExists was just called")
+// CheckImageFileExists calls CheckImageFileExistsFunc.
+func (mock *TransactionerMock) CheckImageFileExists(ctx context.Context, filename string) (bool, error) {
+	if mock.CheckImageFileExistsFunc == nil {
+		panic("TransactionerMock.CheckImageFileExistsFunc: method is nil but Transactioner.CheckImageFileExists was just called")
 	}
 	callInfo := struct {
 		Ctx      context.Context
-		FileHash []byte
+		Filename string
 	}{
 		Ctx:      ctx,
-		FileHash: fileHash,
+		Filename: filename,
 	}
-	mock.lockCheckImageHashExists.Lock()
-	mock.calls.CheckImageHashExists = append(mock.calls.CheckImageHashExists, callInfo)
-	mock.lockCheckImageHashExists.Unlock()
-	return mock.CheckImageHashExistsFunc(ctx, fileHash)
+	mock.lockCheckImageFileExists.Lock()
+	mock.calls.CheckImageFileExists = append(mock.calls.CheckImageFileExists, callInfo)
+	mock.lockCheckImageFileExists.Unlock()
+	return mock.CheckImageFileExistsFunc(ctx, filename)
 }
 
-// CheckImageHashExistsCalls gets all the calls that were made to CheckImageHashExists.
+// CheckImageFileExistsCalls gets all the calls that were made to CheckImageFileExists.
 // Check the length with:
 //
-//	len(mockedTransactioner.CheckImageHashExistsCalls())
-func (mock *TransactionerMock) CheckImageHashExistsCalls() []struct {
+//	len(mockedTransactioner.CheckImageFileExistsCalls())
+func (mock *TransactionerMock) CheckImageFileExistsCalls() []struct {
 	Ctx      context.Context
-	FileHash []byte
+	Filename string
 } {
 	var calls []struct {
 		Ctx      context.Context
-		FileHash []byte
+		Filename string
 	}
-	mock.lockCheckImageHashExists.RLock()
-	calls = mock.calls.CheckImageHashExists
-	mock.lockCheckImageHashExists.RUnlock()
+	mock.lockCheckImageFileExists.RLock()
+	calls = mock.calls.CheckImageFileExists
+	mock.lockCheckImageFileExists.RUnlock()
+	return calls
+}
+
+// CheckVideoExists calls CheckVideoExistsFunc.
+func (mock *TransactionerMock) CheckVideoExists(ctx context.Context, id uuid.UUID) (bool, error) {
+	if mock.CheckVideoExistsFunc == nil {
+		panic("TransactionerMock.CheckVideoExistsFunc: method is nil but Transactioner.CheckVideoExists was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+		ID  uuid.UUID
+	}{
+		Ctx: ctx,
+		ID:  id,
+	}
+	mock.lockCheckVideoExists.Lock()
+	mock.calls.CheckVideoExists = append(mock.calls.CheckVideoExists, callInfo)
+	mock.lockCheckVideoExists.Unlock()
+	return mock.CheckVideoExistsFunc(ctx, id)
+}
+
+// CheckVideoExistsCalls gets all the calls that were made to CheckVideoExists.
+// Check the length with:
+//
+//	len(mockedTransactioner.CheckVideoExistsCalls())
+func (mock *TransactionerMock) CheckVideoExistsCalls() []struct {
+	Ctx context.Context
+	ID  uuid.UUID
+} {
+	var calls []struct {
+		Ctx context.Context
+		ID  uuid.UUID
+	}
+	mock.lockCheckVideoExists.RLock()
+	calls = mock.calls.CheckVideoExists
+	mock.lockCheckVideoExists.RUnlock()
+	return calls
+}
+
+// CheckVideoFileExists calls CheckVideoFileExistsFunc.
+func (mock *TransactionerMock) CheckVideoFileExists(ctx context.Context, filename string) (bool, error) {
+	if mock.CheckVideoFileExistsFunc == nil {
+		panic("TransactionerMock.CheckVideoFileExistsFunc: method is nil but Transactioner.CheckVideoFileExists was just called")
+	}
+	callInfo := struct {
+		Ctx      context.Context
+		Filename string
+	}{
+		Ctx:      ctx,
+		Filename: filename,
+	}
+	mock.lockCheckVideoFileExists.Lock()
+	mock.calls.CheckVideoFileExists = append(mock.calls.CheckVideoFileExists, callInfo)
+	mock.lockCheckVideoFileExists.Unlock()
+	return mock.CheckVideoFileExistsFunc(ctx, filename)
+}
+
+// CheckVideoFileExistsCalls gets all the calls that were made to CheckVideoFileExists.
+// Check the length with:
+//
+//	len(mockedTransactioner.CheckVideoFileExistsCalls())
+func (mock *TransactionerMock) CheckVideoFileExistsCalls() []struct {
+	Ctx      context.Context
+	Filename string
+} {
+	var calls []struct {
+		Ctx      context.Context
+		Filename string
+	}
+	mock.lockCheckVideoFileExists.RLock()
+	calls = mock.calls.CheckVideoFileExists
+	mock.lockCheckVideoFileExists.RUnlock()
 	return calls
 }
 
@@ -2251,6 +3121,42 @@ func (mock *TransactionerMock) DeleteRoleCalls() []struct {
 	return calls
 }
 
+// DeleteVideo calls DeleteVideoFunc.
+func (mock *TransactionerMock) DeleteVideo(ctx context.Context, id uuid.UUID) error {
+	if mock.DeleteVideoFunc == nil {
+		panic("TransactionerMock.DeleteVideoFunc: method is nil but Transactioner.DeleteVideo was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+		ID  uuid.UUID
+	}{
+		Ctx: ctx,
+		ID:  id,
+	}
+	mock.lockDeleteVideo.Lock()
+	mock.calls.DeleteVideo = append(mock.calls.DeleteVideo, callInfo)
+	mock.lockDeleteVideo.Unlock()
+	return mock.DeleteVideoFunc(ctx, id)
+}
+
+// DeleteVideoCalls gets all the calls that were made to DeleteVideo.
+// Check the length with:
+//
+//	len(mockedTransactioner.DeleteVideoCalls())
+func (mock *TransactionerMock) DeleteVideoCalls() []struct {
+	Ctx context.Context
+	ID  uuid.UUID
+} {
+	var calls []struct {
+		Ctx context.Context
+		ID  uuid.UUID
+	}
+	mock.lockDeleteVideo.RLock()
+	calls = mock.calls.DeleteVideo
+	mock.lockDeleteVideo.RUnlock()
+	return calls
+}
+
 // GetAllImagesInIDS calls GetAllImagesInIDSFunc.
 func (mock *TransactionerMock) GetAllImagesInIDS(ctx context.Context, imageIds []uuid.UUID) ([]db.GetAllImagesInIDSRow, error) {
 	if mock.GetAllImagesInIDSFunc == nil {
@@ -2355,8 +3261,44 @@ func (mock *TransactionerMock) GetAllUsersInIDSCalls() []struct {
 	return calls
 }
 
+// GetAllVideosInIDS calls GetAllVideosInIDSFunc.
+func (mock *TransactionerMock) GetAllVideosInIDS(ctx context.Context, videoIds []uuid.UUID) ([]db.Video, error) {
+	if mock.GetAllVideosInIDSFunc == nil {
+		panic("TransactionerMock.GetAllVideosInIDSFunc: method is nil but Transactioner.GetAllVideosInIDS was just called")
+	}
+	callInfo := struct {
+		Ctx      context.Context
+		VideoIds []uuid.UUID
+	}{
+		Ctx:      ctx,
+		VideoIds: videoIds,
+	}
+	mock.lockGetAllVideosInIDS.Lock()
+	mock.calls.GetAllVideosInIDS = append(mock.calls.GetAllVideosInIDS, callInfo)
+	mock.lockGetAllVideosInIDS.Unlock()
+	return mock.GetAllVideosInIDSFunc(ctx, videoIds)
+}
+
+// GetAllVideosInIDSCalls gets all the calls that were made to GetAllVideosInIDS.
+// Check the length with:
+//
+//	len(mockedTransactioner.GetAllVideosInIDSCalls())
+func (mock *TransactionerMock) GetAllVideosInIDSCalls() []struct {
+	Ctx      context.Context
+	VideoIds []uuid.UUID
+} {
+	var calls []struct {
+		Ctx      context.Context
+		VideoIds []uuid.UUID
+	}
+	mock.lockGetAllVideosInIDS.RLock()
+	calls = mock.calls.GetAllVideosInIDS
+	mock.lockGetAllVideosInIDS.RUnlock()
+	return calls
+}
+
 // GetImageById calls GetImageByIdFunc.
-func (mock *TransactionerMock) GetImageById(ctx context.Context, id uuid.UUID) (db.Image, error) {
+func (mock *TransactionerMock) GetImageById(ctx context.Context, id uuid.UUID) (db.GetImageByIdRow, error) {
 	if mock.GetImageByIdFunc == nil {
 		panic("TransactionerMock.GetImageByIdFunc: method is nil but Transactioner.GetImageById was just called")
 	}
@@ -2463,6 +3405,42 @@ func (mock *TransactionerMock) GetManyUsersCalls() []struct {
 	return calls
 }
 
+// GetManyVideos calls GetManyVideosFunc.
+func (mock *TransactionerMock) GetManyVideos(ctx context.Context, arg db.GetManyVideosParams) ([]db.Video, error) {
+	if mock.GetManyVideosFunc == nil {
+		panic("TransactionerMock.GetManyVideosFunc: method is nil but Transactioner.GetManyVideos was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+		Arg db.GetManyVideosParams
+	}{
+		Ctx: ctx,
+		Arg: arg,
+	}
+	mock.lockGetManyVideos.Lock()
+	mock.calls.GetManyVideos = append(mock.calls.GetManyVideos, callInfo)
+	mock.lockGetManyVideos.Unlock()
+	return mock.GetManyVideosFunc(ctx, arg)
+}
+
+// GetManyVideosCalls gets all the calls that were made to GetManyVideos.
+// Check the length with:
+//
+//	len(mockedTransactioner.GetManyVideosCalls())
+func (mock *TransactionerMock) GetManyVideosCalls() []struct {
+	Ctx context.Context
+	Arg db.GetManyVideosParams
+} {
+	var calls []struct {
+		Ctx context.Context
+		Arg db.GetManyVideosParams
+	}
+	mock.lockGetManyVideos.RLock()
+	calls = mock.calls.GetManyVideos
+	mock.lockGetManyVideos.RUnlock()
+	return calls
+}
+
 // GetUserByEmail calls GetUserByEmailFunc.
 func (mock *TransactionerMock) GetUserByEmail(ctx context.Context, email string) (db.GetUserByEmailRow, error) {
 	if mock.GetUserByEmailFunc == nil {
@@ -2532,6 +3510,42 @@ func (mock *TransactionerMock) GetUserByIdCalls() []struct {
 	mock.lockGetUserById.RLock()
 	calls = mock.calls.GetUserById
 	mock.lockGetUserById.RUnlock()
+	return calls
+}
+
+// GetVideoById calls GetVideoByIdFunc.
+func (mock *TransactionerMock) GetVideoById(ctx context.Context, id uuid.UUID) (db.Video, error) {
+	if mock.GetVideoByIdFunc == nil {
+		panic("TransactionerMock.GetVideoByIdFunc: method is nil but Transactioner.GetVideoById was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+		ID  uuid.UUID
+	}{
+		Ctx: ctx,
+		ID:  id,
+	}
+	mock.lockGetVideoById.Lock()
+	mock.calls.GetVideoById = append(mock.calls.GetVideoById, callInfo)
+	mock.lockGetVideoById.Unlock()
+	return mock.GetVideoByIdFunc(ctx, id)
+}
+
+// GetVideoByIdCalls gets all the calls that were made to GetVideoById.
+// Check the length with:
+//
+//	len(mockedTransactioner.GetVideoByIdCalls())
+func (mock *TransactionerMock) GetVideoByIdCalls() []struct {
+	Ctx context.Context
+	ID  uuid.UUID
+} {
+	var calls []struct {
+		Ctx context.Context
+		ID  uuid.UUID
+	}
+	mock.lockGetVideoById.RLock()
+	calls = mock.calls.GetVideoById
+	mock.lockGetVideoById.RUnlock()
 	return calls
 }
 
@@ -2676,6 +3690,42 @@ func (mock *TransactionerMock) InsertOrUpdateUserCalls() []struct {
 	mock.lockInsertOrUpdateUser.RLock()
 	calls = mock.calls.InsertOrUpdateUser
 	mock.lockInsertOrUpdateUser.RUnlock()
+	return calls
+}
+
+// InsertOrUpdateVideo calls InsertOrUpdateVideoFunc.
+func (mock *TransactionerMock) InsertOrUpdateVideo(ctx context.Context, arg db.InsertOrUpdateVideoParams) error {
+	if mock.InsertOrUpdateVideoFunc == nil {
+		panic("TransactionerMock.InsertOrUpdateVideoFunc: method is nil but Transactioner.InsertOrUpdateVideo was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+		Arg db.InsertOrUpdateVideoParams
+	}{
+		Ctx: ctx,
+		Arg: arg,
+	}
+	mock.lockInsertOrUpdateVideo.Lock()
+	mock.calls.InsertOrUpdateVideo = append(mock.calls.InsertOrUpdateVideo, callInfo)
+	mock.lockInsertOrUpdateVideo.Unlock()
+	return mock.InsertOrUpdateVideoFunc(ctx, arg)
+}
+
+// InsertOrUpdateVideoCalls gets all the calls that were made to InsertOrUpdateVideo.
+// Check the length with:
+//
+//	len(mockedTransactioner.InsertOrUpdateVideoCalls())
+func (mock *TransactionerMock) InsertOrUpdateVideoCalls() []struct {
+	Ctx context.Context
+	Arg db.InsertOrUpdateVideoParams
+} {
+	var calls []struct {
+		Ctx context.Context
+		Arg db.InsertOrUpdateVideoParams
+	}
+	mock.lockInsertOrUpdateVideo.RLock()
+	calls = mock.calls.InsertOrUpdateVideo
+	mock.lockInsertOrUpdateVideo.RUnlock()
 	return calls
 }
 

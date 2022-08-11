@@ -2,8 +2,8 @@
 -- +goose StatementBegin
 CREATE TABLE images (
     id UUID PRIMARY KEY,
-    title TEXT,
-    file_hash BYTEA UNIQUE NOT NULL,
+    file_name TEXT UNIQUE NOT NULL,
+    file_size BIGINT NOT NULL,
     created_at TIMESTAMPTZ NOT NULL,
     updated_at TIMESTAMPTZ NOT NULL
 );
@@ -11,8 +11,7 @@ CREATE TABLE images (
 
 CREATE TABLE videos (
     id UUID PRIMARY KEY,
-    title TEXT,
-    file_hash BYTEA UNIQUE NOT NULL,
+    file_name TEXT UNIQUE NOT NULL,
     thumbnail_id UUID NOT NULL REFERENCES images (id),
     created_at TIMESTAMPTZ NOT NULL,
     updated_at TIMESTAMPTZ NOT NULL

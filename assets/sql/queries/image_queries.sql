@@ -1,21 +1,18 @@
 -- name: InsertOrUpdateImage :exec
 INSERT INTO images (
     id,
-    title,
-    file_hash,
+    file_name,
     created_at,
     updated_at
 ) VALUES (
     @id::UUID,
-    sqlc.narg('title')::TEXT,
-    @file_hash::BYTEA,
+    @file_name::TEXT,
     @created_at::TIMESTAMPTZ,
     @updated_at::TIMESTAMPTZ
 ) ON CONFLICT (id)
 DO UPDATE
 SET
-    title = EXCLUDED.title,
-    file_hash = EXCLUDED.file_hash,
+    file_name = EXCLUDED.file_name,
     updated_at = EXCLUDED.updated_at;
 
 
@@ -30,16 +27,15 @@ SELECT EXISTS(SELECT 1 FROM images WHERE id = @id::UUID);
 
 
 
--- name: CheckImageHashExists :one
-SELECT EXISTS(SELECT 1 FROM images WHERE file_hash = @file_hash::BYTEA);
+-- name: CheckImageFileExists :one
+SELECT EXISTS(SELECT 1 FROM images WHERE file_name = @file_name::TEXT);
 
 
 
 -- name: GetImageById :one
 SELECT 
 id, 
-title, 
-file_hash, 
+file_name,
 created_at, 
 updated_at
 FROM images
@@ -49,9 +45,9 @@ WHERE id = @id::UUID;
 
 -- name: GetManyImages :many
 SELECT 
-    id, 
-    title, 
-    created_at, 
+    id,
+    file_name,
+    created_at,
     updated_at
 FROM images
 WHERE
@@ -63,8 +59,8 @@ LIMIT @image_limit::BIGINT;
 
 -- name: GetAllImagesInIDS :many
 SELECT 
-    id, 
-    title, 
+    id,
+    file_name,
     created_at, 
     updated_at
 FROM images

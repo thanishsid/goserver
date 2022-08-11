@@ -44,6 +44,7 @@ type ResolverRoot interface {
 	Queries() QueriesResolver
 	Session() SessionResolver
 	User() UserResolver
+	Video() VideoResolver
 }
 
 type DirectiveRoot struct {
@@ -55,7 +56,6 @@ type ComplexityRoot struct {
 		CreatedAt func(childComplexity int) int
 		ID        func(childComplexity int) int
 		Link      func(childComplexity int) int
-		Title     func(childComplexity int) int
 		UpdatedAt func(childComplexity int) int
 	}
 
@@ -74,7 +74,8 @@ type ComplexityRoot struct {
 		StartAccountCreation     func(childComplexity int, input model.StartUserCreationInput) int
 		StartAccountRegistration func(childComplexity int, input model.StartRegistrationInput) int
 		UpdateProfile            func(childComplexity int, input model.UpdateProfileInput) int
-		UploadImage              func(childComplexity int, file graphql.Upload, title *string) int
+		UploadImage              func(childComplexity int, file graphql.Upload) int
+		UploadVideo              func(childComplexity int, file graphql.Upload) int
 	}
 
 	MyInfo struct {
@@ -130,14 +131,22 @@ type ComplexityRoot struct {
 		Cursor func(childComplexity int) int
 		Node   func(childComplexity int) int
 	}
+
+	Video struct {
+		CreatedAt func(childComplexity int) int
+		ID        func(childComplexity int) int
+		Link      func(childComplexity int) int
+		Thumbnail func(childComplexity int) int
+		UpdatedAt func(childComplexity int) int
+	}
 }
 
 type ImageResolver interface {
 	ID(ctx context.Context, obj *domain.Image) (string, error)
-	Title(ctx context.Context, obj *domain.Image) (*string, error)
 }
 type MutationsResolver interface {
-	UploadImage(ctx context.Context, file graphql.Upload, title *string) (*domain.Image, error)
+	UploadImage(ctx context.Context, file graphql.Upload) (*domain.Image, error)
+	UploadVideo(ctx context.Context, file graphql.Upload) (*domain.Video, error)
 	Login(ctx context.Context, email string, password string) (*model.Message, error)
 	Logout(ctx context.Context) (*model.Message, error)
 	LogoutFromAllDevices(ctx context.Context) (*model.Message, error)
@@ -169,6 +178,11 @@ type UserResolver interface {
 	Sessions(ctx context.Context, obj *domain.User) ([]*domain.Session, error)
 
 	DeletedAt(ctx context.Context, obj *domain.User) (*time.Time, error)
+}
+type VideoResolver interface {
+	ID(ctx context.Context, obj *domain.Video) (string, error)
+
+	Thumbnail(ctx context.Context, obj *domain.Video) (*domain.Image, error)
 }
 
 type executableSchema struct {
@@ -206,13 +220,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Image.Link(childComplexity), true
-
-	case "Image.title":
-		if e.complexity.Image.Title == nil {
-			break
-		}
-
-		return e.complexity.Image.Title(childComplexity), true
 
 	case "Image.updatedAt":
 		if e.complexity.Image.UpdatedAt == nil {
@@ -343,7 +350,19 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutations.UploadImage(childComplexity, args["file"].(graphql.Upload), args["title"].(*string)), true
+		return e.complexity.Mutations.UploadImage(childComplexity, args["file"].(graphql.Upload)), true
+
+	case "Mutations.UploadVideo":
+		if e.complexity.Mutations.UploadVideo == nil {
+			break
+		}
+
+		args, err := ec.field_Mutations_UploadVideo_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutations.UploadVideo(childComplexity, args["file"].(graphql.Upload)), true
 
 	case "MyInfo.account":
 		if e.complexity.MyInfo.Account == nil {
@@ -565,6 +584,41 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.UserEdge.Node(childComplexity), true
 
+	case "Video.createdAt":
+		if e.complexity.Video.CreatedAt == nil {
+			break
+		}
+
+		return e.complexity.Video.CreatedAt(childComplexity), true
+
+	case "Video.id":
+		if e.complexity.Video.ID == nil {
+			break
+		}
+
+		return e.complexity.Video.ID(childComplexity), true
+
+	case "Video.link":
+		if e.complexity.Video.Link == nil {
+			break
+		}
+
+		return e.complexity.Video.Link(childComplexity), true
+
+	case "Video.thumbnail":
+		if e.complexity.Video.Thumbnail == nil {
+			break
+		}
+
+		return e.complexity.Video.Thumbnail(childComplexity), true
+
+	case "Video.updatedAt":
+		if e.complexity.Video.UpdatedAt == nil {
+			break
+		}
+
+		return e.complexity.Video.UpdatedAt(childComplexity), true
+
 	}
 	return 0, false
 }
@@ -664,8 +718,15 @@ directive @authorize(object: String!, action: String!) on FIELD_DEFINITION
 `, BuiltIn: false},
 	{Name: "../schema/general.graphqls", Input: `type Image @goModel(model: "github.com/thanishsid/goserver/domain.Image") {
 	id: ID!
-	title: String
 	link: String!
+	createdAt: Time!
+	updatedAt: Time!
+}
+
+type Video @goModel(model: "github.com/thanishsid/goserver/domain.Video") {
+	id: ID!
+	link: String!
+	thumbnail: Image! @goField(forceResolver: true)
 	createdAt: Time!
 	updatedAt: Time!
 }
@@ -703,8 +764,11 @@ type Queries {
 }
 
 type Mutations {
-	UploadImage(file: Upload!, title: String): Image!
+	UploadImage(file: Upload!): Image!
 		@authorize(object: "image", action: "upload")
+
+	UploadVideo(file: Upload!): Video!
+		@authorize(object: "video", action: "upload")
 }
 `, BuiltIn: false},
 	{Name: "../schema/session.graphqls", Input: `type Session @goModel(model: "github.com/thanishsid/goserver/domain.Session") {
@@ -970,15 +1034,21 @@ func (ec *executionContext) field_Mutations_UploadImage_args(ctx context.Context
 		}
 	}
 	args["file"] = arg0
-	var arg1 *string
-	if tmp, ok := rawArgs["title"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("title"))
-		arg1, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutations_UploadVideo_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 graphql.Upload
+	if tmp, ok := rawArgs["file"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("file"))
+		arg0, err = ec.unmarshalNUpload2githubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚐUpload(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["title"] = arg1
+	args["file"] = arg0
 	return args, nil
 }
 
@@ -1140,47 +1210,6 @@ func (ec *executionContext) fieldContext_Image_id(ctx context.Context, field gra
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type ID does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Image_title(ctx context.Context, field graphql.CollectedField, obj *domain.Image) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Image_title(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Image().Title(rctx, obj)
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*string)
-	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Image_title(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Image",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -1377,7 +1406,7 @@ func (ec *executionContext) _Mutations_UploadImage(ctx context.Context, field gr
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		directive0 := func(rctx context.Context) (interface{}, error) {
 			ctx = rctx // use context from middleware stack in children
-			return ec.resolvers.Mutations().UploadImage(rctx, fc.Args["file"].(graphql.Upload), fc.Args["title"].(*string))
+			return ec.resolvers.Mutations().UploadImage(rctx, fc.Args["file"].(graphql.Upload))
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
 			object, err := ec.unmarshalNString2string(ctx, "image")
@@ -1431,8 +1460,6 @@ func (ec *executionContext) fieldContext_Mutations_UploadImage(ctx context.Conte
 			switch field.Name {
 			case "id":
 				return ec.fieldContext_Image_id(ctx, field)
-			case "title":
-				return ec.fieldContext_Image_title(ctx, field)
 			case "link":
 				return ec.fieldContext_Image_link(ctx, field)
 			case "createdAt":
@@ -1451,6 +1478,101 @@ func (ec *executionContext) fieldContext_Mutations_UploadImage(ctx context.Conte
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutations_UploadImage_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutations_UploadVideo(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutations_UploadVideo(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		directive0 := func(rctx context.Context) (interface{}, error) {
+			ctx = rctx // use context from middleware stack in children
+			return ec.resolvers.Mutations().UploadVideo(rctx, fc.Args["file"].(graphql.Upload))
+		}
+		directive1 := func(ctx context.Context) (interface{}, error) {
+			object, err := ec.unmarshalNString2string(ctx, "video")
+			if err != nil {
+				return nil, err
+			}
+			action, err := ec.unmarshalNString2string(ctx, "upload")
+			if err != nil {
+				return nil, err
+			}
+			if ec.directives.Authorize == nil {
+				return nil, errors.New("directive authorize is not implemented")
+			}
+			return ec.directives.Authorize(ctx, nil, directive0, object, action)
+		}
+
+		tmp, err := directive1(rctx)
+		if err != nil {
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if tmp == nil {
+			return nil, nil
+		}
+		if data, ok := tmp.(*domain.Video); ok {
+			return data, nil
+		}
+		return nil, fmt.Errorf(`unexpected type %T from directive, should be *github.com/thanishsid/goserver/domain.Video`, tmp)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*domain.Video)
+	fc.Result = res
+	return ec.marshalNVideo2ᚖgithubᚗcomᚋthanishsidᚋgoserverᚋdomainᚐVideo(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutations_UploadVideo(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutations",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Video_id(ctx, field)
+			case "link":
+				return ec.fieldContext_Video_link(ctx, field)
+			case "thumbnail":
+				return ec.fieldContext_Video_thumbnail(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Video_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Video_updatedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Video", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutations_UploadVideo_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return
 	}
@@ -3549,8 +3671,6 @@ func (ec *executionContext) fieldContext_User_picture(ctx context.Context, field
 			switch field.Name {
 			case "id":
 				return ec.fieldContext_Image_id(ctx, field)
-			case "title":
-				return ec.fieldContext_Image_title(ctx, field)
 			case "link":
 				return ec.fieldContext_Image_link(ctx, field)
 			case "createdAt":
@@ -4048,6 +4168,236 @@ func (ec *executionContext) fieldContext_UserEdge_node(ctx context.Context, fiel
 				return ec.fieldContext_User_deletedAt(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Video_id(ctx context.Context, field graphql.CollectedField, obj *domain.Video) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Video_id(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Video().ID(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNID2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Video_id(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Video",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Video_link(ctx context.Context, field graphql.CollectedField, obj *domain.Video) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Video_link(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Link, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Video_link(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Video",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Video_thumbnail(ctx context.Context, field graphql.CollectedField, obj *domain.Video) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Video_thumbnail(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Video().Thumbnail(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*domain.Image)
+	fc.Result = res
+	return ec.marshalNImage2ᚖgithubᚗcomᚋthanishsidᚋgoserverᚋdomainᚐImage(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Video_thumbnail(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Video",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Image_id(ctx, field)
+			case "link":
+				return ec.fieldContext_Image_link(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Image_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Image_updatedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Image", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Video_createdAt(ctx context.Context, field graphql.CollectedField, obj *domain.Video) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Video_createdAt(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.CreatedAt, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(time.Time)
+	fc.Result = res
+	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Video_createdAt(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Video",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Video_updatedAt(ctx context.Context, field graphql.CollectedField, obj *domain.Video) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Video_updatedAt(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.UpdatedAt, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(time.Time)
+	fc.Result = res
+	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Video_updatedAt(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Video",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
 		},
 	}
 	return fc, nil
@@ -6056,23 +6406,6 @@ func (ec *executionContext) _Image(ctx context.Context, sel ast.SelectionSet, ob
 				return innerFunc(ctx)
 
 			})
-		case "title":
-			field := field
-
-			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Image_title(ctx, field, obj)
-				return res
-			}
-
-			out.Concurrently(i, func() graphql.Marshaler {
-				return innerFunc(ctx)
-
-			})
 		case "link":
 
 			out.Values[i] = ec._Image_link(ctx, field, obj)
@@ -6156,6 +6489,15 @@ func (ec *executionContext) _Mutations(ctx context.Context, sel ast.SelectionSet
 
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutations_UploadImage(ctx, field)
+			})
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "UploadVideo":
+
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutations_UploadVideo(ctx, field)
 			})
 
 			if out.Values[i] == graphql.Null {
@@ -6798,6 +7140,88 @@ func (ec *executionContext) _UserEdge(ctx context.Context, sel ast.SelectionSet,
 
 			if out.Values[i] == graphql.Null {
 				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var videoImplementors = []string{"Video"}
+
+func (ec *executionContext) _Video(ctx context.Context, sel ast.SelectionSet, obj *domain.Video) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, videoImplementors)
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("Video")
+		case "id":
+			field := field
+
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Video_id(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			}
+
+			out.Concurrently(i, func() graphql.Marshaler {
+				return innerFunc(ctx)
+
+			})
+		case "link":
+
+			out.Values[i] = ec._Video_link(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
+		case "thumbnail":
+			field := field
+
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Video_thumbnail(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			}
+
+			out.Concurrently(i, func() graphql.Marshaler {
+				return innerFunc(ctx)
+
+			})
+		case "createdAt":
+
+			out.Values[i] = ec._Video_createdAt(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
+		case "updatedAt":
+
+			out.Values[i] = ec._Video_updatedAt(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
 			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
@@ -7507,6 +7931,20 @@ func (ec *executionContext) marshalNUserEdge2ᚖgithubᚗcomᚋthanishsidᚋgose
 		return graphql.Null
 	}
 	return ec._UserEdge(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNVideo2githubᚗcomᚋthanishsidᚋgoserverᚋdomainᚐVideo(ctx context.Context, sel ast.SelectionSet, v domain.Video) graphql.Marshaler {
+	return ec._Video(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNVideo2ᚖgithubᚗcomᚋthanishsidᚋgoserverᚋdomainᚐVideo(ctx context.Context, sel ast.SelectionSet, v *domain.Video) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._Video(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalN__Directive2githubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐDirective(ctx context.Context, sel ast.SelectionSet, v introspection.Directive) graphql.Marshaler {

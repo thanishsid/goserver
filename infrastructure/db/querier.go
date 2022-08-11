@@ -12,21 +12,28 @@ import (
 
 type Querier interface {
 	CheckImageExists(ctx context.Context, id uuid.UUID) (bool, error)
-	CheckImageHashExists(ctx context.Context, fileHash []byte) (bool, error)
+	CheckImageFileExists(ctx context.Context, fileName string) (bool, error)
+	CheckVideoExists(ctx context.Context, id uuid.UUID) (bool, error)
+	CheckVideoFileExists(ctx context.Context, fileName string) (bool, error)
 	DeleteImage(ctx context.Context, id uuid.UUID) error
 	DeleteRole(ctx context.Context, id string) error
+	DeleteVideo(ctx context.Context, id uuid.UUID) error
 	GetAllImagesInIDS(ctx context.Context, imageIds []uuid.UUID) ([]GetAllImagesInIDSRow, error)
 	GetAllRoles(ctx context.Context) ([]Role, error)
 	GetAllUsersInIDS(ctx context.Context, userIds []uuid.UUID) ([]GetAllUsersInIDSRow, error)
-	GetImageById(ctx context.Context, id uuid.UUID) (Image, error)
+	GetAllVideosInIDS(ctx context.Context, videoIds []uuid.UUID) ([]Video, error)
+	GetImageById(ctx context.Context, id uuid.UUID) (GetImageByIdRow, error)
 	GetManyImages(ctx context.Context, arg GetManyImagesParams) ([]GetManyImagesRow, error)
 	GetManyUsers(ctx context.Context, arg GetManyUsersParams) ([]GetManyUsersRow, error)
+	GetManyVideos(ctx context.Context, arg GetManyVideosParams) ([]Video, error)
 	GetUserByEmail(ctx context.Context, email string) (GetUserByEmailRow, error)
 	GetUserById(ctx context.Context, userID uuid.UUID) (GetUserByIdRow, error)
+	GetVideoById(ctx context.Context, id uuid.UUID) (Video, error)
 	HardDeleteUser(ctx context.Context, userID uuid.UUID) error
 	InsertOrUpdateImage(ctx context.Context, arg InsertOrUpdateImageParams) error
 	InsertOrUpdateRoles(ctx context.Context, arg InsertOrUpdateRolesParams) error
 	InsertOrUpdateUser(ctx context.Context, arg InsertOrUpdateUserParams) error
+	InsertOrUpdateVideo(ctx context.Context, arg InsertOrUpdateVideoParams) error
 	SoftDeleteUser(ctx context.Context, userID uuid.UUID) error
 }
 

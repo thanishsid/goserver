@@ -1,33 +1,50 @@
 package service
 
 import (
-	"crypto/sha512"
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
+	"os/exec"
 	"path/filepath"
+	"strconv"
+	"strings"
 
-	"github.com/google/uuid"
 	"github.com/thanishsid/goserver/config"
 )
 
-// Get file path from image directory in config and the image id.
-func getImagePath(id uuid.UUID) string {
-	return filepath.Join(config.C.ImageDirectory, id.String())
+// Get file path from image directory in config and the image filename.
+func getImagePath(filename string) string {
+	return filepath.Join(config.C.ImageDirectory, filename)
 }
 
-// generate a SHA512 hash for the file.
-func generateFileHash(bytes []byte) ([]byte, error) {
-	hasher := sha512.New()
+// Get file path from video directory in config and the video filename.
+func getVideoPath(filename string) string {
+	return filepath.Join(config.C.VideoDirectory, filename)
+}
 
-	_, err := hasher.Write(bytes)
+// Get Video Duration.
+func getVideoDuration(path string) (float64, error) {
+	ffmpegProber := exec.Command(
+		"ffprobe",
+		"-v", "error",
+		"-show_entries",
+		"format=duration",
+		"-of", "default=noprint_wrappers=1:nokey=1",
+		path,
+	)
+
+	data, err := ffmpegProber.Output()
 	if err != nil {
-		return nil, fmt.Errorf("failed to generate hash of image, %w", err)
+		return 0, err
 	}
 
-	sum := hasher.Sum(nil)
+	durationString := strings.TrimSuffix(string(data), "\n")
 
-	return sum, nil
+	duration, err := strconv.ParseFloat(durationString, 64)
+	if err != nil {
+		return 0, err
+	}
+
+	return duration, nil
 }
 
 // Encode cursor to json and url safe base64.

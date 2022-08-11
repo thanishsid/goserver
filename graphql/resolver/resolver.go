@@ -11,6 +11,7 @@ import (
 type Resolver struct {
 	UserService    domain.UserService
 	ImageService   domain.ImageService
+	VideoService   domain.VideoService
 	SessionService domain.SessionService
 	AuthService    domain.AuthService
 }

@@ -13,8 +13,8 @@ import (
 
 type Image struct {
 	ID        uuid.UUID
-	Title     null.String
-	FileHash  []byte
+	FileName  string
+	FileSize  int64
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
@@ -40,8 +40,7 @@ type User struct {
 
 type Video struct {
 	ID          uuid.UUID
-	Title       null.String
-	FileHash    []byte
+	FileName    string
 	ThumbnailID uuid.UUID
 	CreatedAt   time.Time
 	UpdatedAt   time.Time

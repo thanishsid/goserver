@@ -10,21 +10,40 @@ import (
 	"github.com/thanishsid/goserver/domain"
 	"github.com/thanishsid/goserver/graphql/generated"
 	"github.com/thanishsid/goserver/graphql/model"
-	null "gopkg.in/guregu/null.v4"
 )
 
 // UploadImage is the resolver for the UploadImage field.
-func (r *mutationsResolver) UploadImage(ctx context.Context, file graphql.Upload, title *string) (*domain.Image, error) {
+func (r *mutationsResolver) UploadImage(ctx context.Context, file graphql.Upload) (*domain.Image, error) {
 	image, err := r.ImageService.Save(ctx, domain.ImageUploadInput{
-		Title:       null.StringFromPtr(title),
-		File:        file.File,
-		ContentType: file.ContentType,
+		FileUploadData: domain.FileUploadData{
+			File:        file.File,
+			FileName:    file.Filename,
+			Size:        file.Size,
+			ContentType: file.ContentType,
+		},
 	})
 	if err != nil {
 		return nil, err
 	}
 
 	return image, nil
+}
+
+// UploadVideo is the resolver for the UploadVideo field.
+func (r *mutationsResolver) UploadVideo(ctx context.Context, file graphql.Upload) (*domain.Video, error) {
+	video, err := r.VideoService.Save(ctx, domain.VideoUploadInput{
+		FileUploadData: domain.FileUploadData{
+			File:        file.File,
+			FileName:    file.Filename,
+			Size:        file.Size,
+			ContentType: file.ContentType,
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return video, nil
 }
 
 // MyInfo is the resolver for the myInfo field.

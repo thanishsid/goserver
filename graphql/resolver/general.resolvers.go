@@ -7,6 +7,7 @@ import (
 	"context"
 
 	"github.com/thanishsid/goserver/domain"
+	"github.com/thanishsid/goserver/graphql/dataloader"
 	"github.com/thanishsid/goserver/graphql/generated"
 	"github.com/thanishsid/goserver/graphql/model"
 )
@@ -14,11 +15,6 @@ import (
 // ID is the resolver for the id field.
 func (r *imageResolver) ID(ctx context.Context, obj *domain.Image) (string, error) {
 	return obj.ID.String(), nil
-}
-
-// Title is the resolver for the title field.
-func (r *imageResolver) Title(ctx context.Context, obj *domain.Image) (*string, error) {
-	return obj.Title.Ptr(), nil
 }
 
 // Account is the resolver for the account field.
@@ -36,11 +32,25 @@ func (r *myInfoResolver) Account(ctx context.Context, obj *model.MyInfo) (*domai
 	return user, nil
 }
 
+// ID is the resolver for the id field.
+func (r *videoResolver) ID(ctx context.Context, obj *domain.Video) (string, error) {
+	return obj.ID.String(), nil
+}
+
+// Thumbnail is the resolver for the thumbnail field.
+func (r *videoResolver) Thumbnail(ctx context.Context, obj *domain.Video) (*domain.Image, error) {
+	return dataloader.For(ctx).GetImage(ctx, obj.ThumbnailID)
+}
+
 // Image returns generated.ImageResolver implementation.
 func (r *Resolver) Image() generated.ImageResolver { return &imageResolver{r} }
 
 // MyInfo returns generated.MyInfoResolver implementation.
 func (r *Resolver) MyInfo() generated.MyInfoResolver { return &myInfoResolver{r} }
 
+// Video returns generated.VideoResolver implementation.
+func (r *Resolver) Video() generated.VideoResolver { return &videoResolver{r} }
+
 type imageResolver struct{ *Resolver }
 type myInfoResolver struct{ *Resolver }
+type videoResolver struct{ *Resolver }

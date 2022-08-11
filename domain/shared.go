@@ -1,6 +1,8 @@
 package domain
 
 import (
+	"io"
+
 	"gopkg.in/guregu/null.v4"
 )
 
@@ -12,4 +14,11 @@ type ListData[T any] struct {
 	HasMore     bool
 	StartCursor null.String
 	EndCursor   null.String
+}
+
+type FileUploadData struct {
+	File        io.Reader
+	FileName    string
+	Size        int64
+	ContentType string
 }

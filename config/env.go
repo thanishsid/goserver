@@ -6,6 +6,7 @@ import (
 
 	"github.com/davecgh/go-spew/spew"
 	vd "github.com/go-ozzo/ozzo-validation/v4"
+	"github.com/go-ozzo/ozzo-validation/v4/is"
 	"github.com/joho/godotenv"
 	"github.com/thanishsid/goserver/domain"
 )
@@ -19,7 +20,10 @@ type config struct {
 	AdminEmail string
 
 	ImageDirectory string
+	VideoDirectory string
+
 	ImageProxyLink string
+	VideoLink      string
 
 	MailHost     string
 	MailPort     int
@@ -50,7 +54,10 @@ func (c config) Validate() error {
 		vd.Field(&c.AdminEmail, vd.Required, domain.IsEmail),
 
 		vd.Field(&c.ImageDirectory, vd.Required),
-		vd.Field(&c.ImageProxyLink, vd.Required),
+		vd.Field(&c.VideoDirectory, vd.Required),
+
+		vd.Field(&c.ImageProxyLink, vd.Required, is.URL),
+		vd.Field(&c.VideoLink, vd.Required, is.URL),
 
 		vd.Field(&c.MailHost, vd.Required),
 		vd.Field(&c.MailPort, vd.Required),
@@ -86,7 +93,10 @@ func ReadConfig(files ...string) {
 		AdminEmail: os.Getenv("ADMIN_EMAIL"),
 
 		ImageDirectory: os.Getenv("IMAGE_DIRECTORY"),
+		VideoDirectory: os.Getenv("VIDEO_DIRECTORY"),
+
 		ImageProxyLink: os.Getenv("IMGPROXY_LINK"),
+		VideoLink:      os.Getenv("VIDEO_LINK"),
 
 		MailHost:     os.Getenv("MAIL_HOST"),
 		MailPort:     MustParseInt[int](os.Getenv("MAIL_PORT")),

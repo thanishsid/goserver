@@ -24,12 +24,12 @@ func (q *Queries) CheckImageExists(ctx context.Context, id uuid.UUID) (bool, err
 	return exists, err
 }
 
-const checkImageHashExists = `-- name: CheckImageHashExists :one
-SELECT EXISTS(SELECT 1 FROM images WHERE file_hash = $1::BYTEA)
+const checkImageFileExists = `-- name: CheckImageFileExists :one
+SELECT EXISTS(SELECT 1 FROM images WHERE file_name = $1::TEXT)
 `
 
-func (q *Queries) CheckImageHashExists(ctx context.Context, fileHash []byte) (bool, error) {
-	row := q.db.QueryRow(ctx, checkImageHashExists, fileHash)
+func (q *Queries) CheckImageFileExists(ctx context.Context, fileName string) (bool, error) {
+	row := q.db.QueryRow(ctx, checkImageFileExists, fileName)
 	var exists bool
 	err := row.Scan(&exists)
 	return exists, err
@@ -46,8 +46,8 @@ func (q *Queries) DeleteImage(ctx context.Context, id uuid.UUID) error {
 
 const getAllImagesInIDS = `-- name: GetAllImagesInIDS :many
 SELECT 
-    id, 
-    title, 
+    id,
+    file_name,
     created_at, 
     updated_at
 FROM images
@@ -56,7 +56,7 @@ WHERE $1::UUID[] IS NULL OR id = ANY($1::UUID[])
 
 type GetAllImagesInIDSRow struct {
 	ID        uuid.UUID
-	Title     null.String
+	FileName  string
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
@@ -72,7 +72,7 @@ func (q *Queries) GetAllImagesInIDS(ctx context.Context, imageIds []uuid.UUID) (
 		var i GetAllImagesInIDSRow
 		if err := rows.Scan(
 			&i.ID,
-			&i.Title,
+			&i.FileName,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -89,21 +89,26 @@ func (q *Queries) GetAllImagesInIDS(ctx context.Context, imageIds []uuid.UUID) (
 const getImageById = `-- name: GetImageById :one
 SELECT 
 id, 
-title, 
-file_hash, 
+file_name,
 created_at, 
 updated_at
 FROM images
 WHERE id = $1::UUID
 `
 
-func (q *Queries) GetImageById(ctx context.Context, id uuid.UUID) (Image, error) {
+type GetImageByIdRow struct {
+	ID        uuid.UUID
+	FileName  string
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
+func (q *Queries) GetImageById(ctx context.Context, id uuid.UUID) (GetImageByIdRow, error) {
 	row := q.db.QueryRow(ctx, getImageById, id)
-	var i Image
+	var i GetImageByIdRow
 	err := row.Scan(
 		&i.ID,
-		&i.Title,
-		&i.FileHash,
+		&i.FileName,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -112,9 +117,9 @@ func (q *Queries) GetImageById(ctx context.Context, id uuid.UUID) (Image, error)
 
 const getManyImages = `-- name: GetManyImages :many
 SELECT 
-    id, 
-    title, 
-    created_at, 
+    id,
+    file_name,
+    created_at,
     updated_at
 FROM images
 WHERE
@@ -130,7 +135,7 @@ type GetManyImagesParams struct {
 
 type GetManyImagesRow struct {
 	ID        uuid.UUID
-	Title     null.String
+	FileName  string
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
@@ -146,7 +151,7 @@ func (q *Queries) GetManyImages(ctx context.Context, arg GetManyImagesParams) ([
 		var i GetManyImagesRow
 		if err := rows.Scan(
 			&i.ID,
-			&i.Title,
+			&i.FileName,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -163,28 +168,24 @@ func (q *Queries) GetManyImages(ctx context.Context, arg GetManyImagesParams) ([
 const insertOrUpdateImage = `-- name: InsertOrUpdateImage :exec
 INSERT INTO images (
     id,
-    title,
-    file_hash,
+    file_name,
     created_at,
     updated_at
 ) VALUES (
     $1::UUID,
     $2::TEXT,
-    $3::BYTEA,
-    $4::TIMESTAMPTZ,
-    $5::TIMESTAMPTZ
+    $3::TIMESTAMPTZ,
+    $4::TIMESTAMPTZ
 ) ON CONFLICT (id)
 DO UPDATE
 SET
-    title = EXCLUDED.title,
-    file_hash = EXCLUDED.file_hash,
+    file_name = EXCLUDED.file_name,
     updated_at = EXCLUDED.updated_at
 `
 
 type InsertOrUpdateImageParams struct {
 	ID        uuid.UUID
-	Title     null.String
-	FileHash  []byte
+	FileName  string
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
@@ -192,8 +193,7 @@ type InsertOrUpdateImageParams struct {
 func (q *Queries) InsertOrUpdateImage(ctx context.Context, arg InsertOrUpdateImageParams) error {
 	_, err := q.db.Exec(ctx, insertOrUpdateImage,
 		arg.ID,
-		arg.Title,
-		arg.FileHash,
+		arg.FileName,
 		arg.CreatedAt,
 		arg.UpdatedAt,
 	)

@@ -91,10 +91,11 @@ func (f CompleteRegistrationInput) Validate() error {
 	return vd.ValidateStruct(&f,
 		vd.Field(&f.Token, vd.Required),
 		vd.Field(&f.Username, vd.Required),
-		vd.Field(&f.Password, vd.Required),
+		vd.Field(&f.Password, vd.Required, IsValidPassword),
 	)
 }
 
+// Input for create user, (used internally in CompleteRegistration and OauthLogin in AuthServices).
 type CreateUserInput struct {
 	Username  string        `json:"username"`
 	Email     string        `json:"email"`
@@ -110,6 +111,7 @@ func (i CreateUserInput) Validate() error {
 		vd.Field(&i.Email, vd.Required, IsEmail),
 		vd.Field(&i.FullName, vd.Required),
 		vd.Field(&i.Role, IsRole),
+		vd.Field(&i.Password, vd.When(i.Password.Valid, IsValidPassword)),
 	)
 }
 

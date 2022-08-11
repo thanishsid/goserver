@@ -20,6 +20,7 @@ require (
 	github.com/pressly/goose/v3 v3.6.1
 	github.com/stretchr/testify v1.8.0
 	github.com/vektah/gqlparser/v2 v2.4.6
+	github.com/wagslane/go-password-validator v0.3.0
 	golang.org/x/crypto v0.0.0-20220722155217-630584e8d5aa
 	gopkg.in/guregu/null.v4 v4.0.0
 	gopkg.in/mail.v2 v2.3.1

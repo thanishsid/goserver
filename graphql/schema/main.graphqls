@@ -11,6 +11,9 @@ type Queries {
 }
 
 type Mutations {
-	UploadImage(file: Upload!, title: String): Image!
+	UploadImage(file: Upload!): Image!
 		@authorize(object: "image", action: "upload")
+
+	UploadVideo(file: Upload!): Video!
+		@authorize(object: "video", action: "upload")
 }

@@ -15,6 +15,7 @@ p, authenticated, session, logout
 p, authenticated, session, logout_all
 
 p, any, image, upload
+p, any, video, upload
 
 p, admin_or_manager, user, get_one
 p, admin_or_manager, user, get_many

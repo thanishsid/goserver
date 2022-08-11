@@ -9,16 +9,6 @@ import (
 	"gopkg.in/guregu/null.v4"
 )
 
-func Test_generateFileHash(t *testing.T) {
-	t.Parallel()
-
-	randbytes := []byte("abcdefghijk")
-
-	hash, err := generateFileHash(randbytes)
-	require.NoError(t, err)
-	require.Len(t, hash, 512/8)
-}
-
 func Test_encode_decode_Cursor(t *testing.T) {
 	t.Parallel()
 

@@ -1,7 +1,14 @@
 type Image @goModel(model: "github.com/thanishsid/goserver/domain.Image") {
 	id: ID!
-	title: String
 	link: String!
+	createdAt: Time!
+	updatedAt: Time!
+}
+
+type Video @goModel(model: "github.com/thanishsid/goserver/domain.Video") {
+	id: ID!
+	link: String!
+	thumbnail: Image! @goField(forceResolver: true)
 	createdAt: Time!
 	updatedAt: Time!
 }

@@ -83,6 +83,8 @@ func checkObjOwnership(obj any, session *domain.Session) bool {
 	switch t := obj.(type) {
 	case *domain.User:
 		return t.IsOwner(session.UserID)
+	case *domain.Session:
+		return t.IsOwner(session.UserID)
 	}
 
 	return false
